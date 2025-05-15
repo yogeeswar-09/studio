@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from 'react-hook-form';
@@ -9,39 +10,38 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Image from 'next/image';
-import { ChangeEvent, useState } from 'react';
-import type { User } from '@/types';
+import { ChangeEvent, useState, useEffect } from 'react';
+import type { User as AppUser } from '@/types';
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   phone: z.string().optional().refine(val => !val || /^\d{10,15}$/.test(val), {
     message: "Invalid phone number format (10-15 digits)."
   }),
-  avatarUrl: z.string().url("Invalid URL.").optional().or(z.literal('')),
+  avatarUrl: z.string().url("Invalid URL for pasted link.").optional().or(z.literal('')),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export function UserInfoForm() {
-  const { user, isLoading: authLoading, login } = useAuth(); // Assuming login can update user or a dedicated updateUser function
-  const { toast } = useToast();
+  const { user, firebaseUser, isLoading: authLoading, updateUserProfile } = useAuth();
   const [formLoading, setFormLoading] = useState(false);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(user?.avatarUrl || null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      name: user?.name || '',
-      phone: user?.contactInfo?.phone || '',
-      avatarUrl: user?.avatarUrl || '',
+      name: '',
+      phone: '',
+      avatarUrl: '',
     },
   });
   
-  // Reset form if user changes (e.g. after login)
-  useState(() => {
+  useEffect(() => {
     if (user) {
       form.reset({
         name: user.name || '',
@@ -50,49 +50,60 @@ export function UserInfoForm() {
       });
       setAvatarPreview(user.avatarUrl || null);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, form.reset]);
 
 
   const handleAvatarUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      setAvatarFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatarPreview(reader.result as string);
-        // In a real app, upload this and get URL. For mock:
-        form.setValue('avatarUrl', 'https://placehold.co/150x150.png?text=New'); 
+        form.setValue('avatarUrl', ''); // Clear pasted URL if file is chosen
       };
       reader.readAsDataURL(file);
     }
   };
 
+  const handlePastedAvatarUrl = (url: string) => {
+    setAvatarPreview(url);
+    setAvatarFile(null); // Clear file if URL is pasted
+    form.setValue('avatarUrl', url);
+  }
+
   const onSubmit = async (data: ProfileFormValues) => {
-    if (!user) return;
+    if (!user || !firebaseUser) return;
     setFormLoading(true);
     
-    // Simulate API call to update user
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const updatedUser: User = {
-      ...user,
+    const profileUpdateData: Partial<AppUser> = {
       name: data.name,
       contactInfo: { phone: data.phone || undefined },
-      avatarUrl: data.avatarUrl || user.avatarUrl, // Keep old if new is empty
+      // avatarUrl will be handled by updateUserProfile based on avatarFile or data.avatarUrl
     };
-    
-    // In a real app, AuthContext would have an updateUser method.
-    // For mock, we can try to simulate this by re-triggering a "login" with updated data if available,
-    // or by directly updating a mutable user object in AuthContext (not ideal).
-    // Simplest mock: just update localStorage and tell user to "re-login" conceptually for changes to fully reflect.
-    localStorage.setItem('campusKartUser', JSON.stringify(updatedUser));
-    // To see changes reflected immediately in the auth context, `login` would need to be called
-    // or `user` state in `AuthContext` updated.
-    // For now, this is a simplified mock.
+    if(data.avatarUrl && !avatarFile) { // if URL was pasted and no new file selected
+        profileUpdateData.avatarUrl = data.avatarUrl;
+    }
 
-    setFormLoading(false);
-    toast({ title: "Profile Updated", description: "Your information has been saved." });
+
+    try {
+        await updateUserProfile(profileUpdateData, avatarFile);
+    } catch (error) {
+        // Error toast is handled in updateUserProfile
+        console.error("Failed to update profile:", error);
+    } finally {
+        setFormLoading(false);
+        setAvatarFile(null); // Reset file state
+    }
   };
 
+  const getInitials = (name: string | undefined) => {
+    if (!name) return 'U';
+    const names = name.split(' ');
+    if (names.length === 1) return names[0].substring(0, 2).toUpperCase();
+    return names[0][0].toUpperCase() + names[names.length - 1][0].toUpperCase();
+  };
+  
   if (authLoading || !user) {
     return <Card><CardContent className="p-6 text-center">Loading profile...</CardContent></Card>;
   }
@@ -106,33 +117,34 @@ export function UserInfoForm() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <FormField
-              control={form.control}
-              name="avatarUrl"
-              render={({ field }) => (
-                <FormItem className="flex flex-col items-center">
-                  <FormLabel>Profile Picture</FormLabel>
-                  <FormControl>
-                    <div className="mt-2 flex flex-col items-center gap-4">
-                      <Avatar className="h-32 w-32">
-                        <AvatarImage src={avatarPreview || user.avatarUrl} alt={user.name} />
-                        <AvatarFallback className="text-3xl">
-                          {user.name?.split(' ').map(n=>n[0]).join('').toUpperCase() || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <Label 
-                        htmlFor="avatar-upload"
-                        className="cursor-pointer text-sm text-primary hover:underline"
-                      >
-                        Change Picture
-                        <Input 
-                          id="avatar-upload" 
-                          type="file" 
-                          className="hidden" 
-                          accept="image/*"
-                          onChange={handleAvatarUpload}
-                        />
-                      </Label>
+            <FormItem className="flex flex-col items-center">
+              <FormLabel>Profile Picture</FormLabel>
+              <FormControl>
+                <div className="mt-2 flex flex-col items-center gap-4">
+                  <Avatar className="h-32 w-32">
+                    <AvatarImage src={avatarPreview || undefined} alt={user.name} />
+                    <AvatarFallback className="text-3xl">
+                      {getInitials(user.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <Label 
+                    htmlFor="avatar-upload"
+                    className="cursor-pointer text-sm text-primary hover:underline"
+                  >
+                    Change Picture
+                    <Input 
+                      id="avatar-upload" 
+                      type="file" 
+                      className="hidden" 
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      disabled={formLoading}
+                    />
+                  </Label>
+                  <FormField
+                    control={form.control}
+                    name="avatarUrl"
+                    render={({ field }) => (
                        <Input 
                           type="text" 
                           placeholder="Or paste image URL" 
@@ -140,15 +152,16 @@ export function UserInfoForm() {
                           value={field.value || ''}
                           onChange={(e) => {
                             field.onChange(e.target.value);
-                            setAvatarPreview(e.target.value);
+                            handlePastedAvatarUrl(e.target.value);
                           }}
+                          disabled={formLoading}
                         />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    )}
+                  />
+                   <FormMessage>{form.formState.errors.avatarUrl?.message}</FormMessage>
+                </div>
+              </FormControl>
+            </FormItem>
 
             <FormField
               control={form.control}
@@ -157,7 +170,7 @@ export function UserInfoForm() {
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Your full name" {...field} />
+                    <Input placeholder="Your full name" {...field} disabled={formLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -177,15 +190,15 @@ export function UserInfoForm() {
                 <FormItem>
                   <FormLabel>Phone Number (Optional)</FormLabel>
                   <FormControl>
-                    <Input type="tel" placeholder="e.g., 9876543210" {...field} />
+                    <Input type="tel" placeholder="e.g., 9876543210" {...field} disabled={formLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={formLoading}>
-              {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={formLoading || authLoading}>
+              {(formLoading || authLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes
             </Button>
           </form>

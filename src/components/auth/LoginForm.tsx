@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -11,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { FirebaseError } from 'firebase/app';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }).endsWith("@mlrit.ac.in", { message: "Must be an MLRIT email." }),
@@ -20,9 +22,11 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
-  const { login, isLoading } = useAuth();
+  const { login, isLoading: authIsLoading } = useAuth();
   const { toast } = useToast();
   const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -34,19 +38,41 @@ export function LoginForm() {
 
   const onSubmit = async (data: LoginFormValues) => {
     setFormError(null);
+    setIsSubmitting(true);
     try {
       await login(data.email, data.password);
+      // Navigation is handled by AuthContext
       toast({ title: "Login Successful", description: "Welcome back to CampusKart!" });
     } catch (error: any) {
-      const errorMessage = error.message || "An unexpected error occurred. Please try again.";
+      let errorMessage = "An unexpected error occurred. Please try again.";
+      if (error instanceof FirebaseError) {
+        switch (error.code) {
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+          case 'auth/invalid-credential':
+            errorMessage = "Invalid email or password.";
+            break;
+          case 'auth/invalid-email':
+            errorMessage = "Invalid email format.";
+            break;
+          default:
+            errorMessage = error.message;
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
       setFormError(errorMessage);
       toast({
         title: "Login Failed",
         description: errorMessage,
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
+  
+  const isLoading = authIsLoading || isSubmitting;
 
   return (
     <Card>
@@ -64,6 +90,7 @@ export function LoginForm() {
               placeholder="yourname@mlrit.ac.in"
               {...form.register('email')}
               className={form.formState.errors.email ? 'border-destructive' : ''}
+              disabled={isLoading}
             />
             {form.formState.errors.email && (
               <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
@@ -77,6 +104,7 @@ export function LoginForm() {
               placeholder="••••••••"
               {...form.register('password')}
               className={form.formState.errors.password ? 'border-destructive' : ''}
+              disabled={isLoading}
             />
             {form.formState.errors.password && (
               <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>

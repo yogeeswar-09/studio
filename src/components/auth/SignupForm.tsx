@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -11,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { FirebaseError } from 'firebase/app';
 
 const signupSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -21,9 +23,10 @@ const signupSchema = z.object({
 type SignupFormValues = z.infer<typeof signupSchema>;
 
 export function SignupForm() {
-  const { signup, isLoading } = useAuth();
+  const { signup, isLoading: authIsLoading } = useAuth();
   const { toast } = useToast();
   const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -36,19 +39,41 @@ export function SignupForm() {
 
   const onSubmit = async (data: SignupFormValues) => {
     setFormError(null);
+    setIsSubmitting(true);
     try {
       await signup(data.name, data.email, data.password);
-      toast({ title: "Signup Successful", description: "Please check your email to verify your account." });
+      // Toast and navigation are handled by AuthContext or the signup function itself
     } catch (error: any) {
-      const errorMessage = error.message || "An unexpected error occurred. Please try again.";
+      let errorMessage = "An unexpected error occurred. Please try again.";
+      if (error instanceof FirebaseError) {
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            errorMessage = "This email is already registered. Try logging in.";
+            break;
+          case 'auth/invalid-email':
+            errorMessage = "Invalid email format.";
+            break;
+          case 'auth/weak-password':
+            errorMessage = "Password is too weak. Please choose a stronger password.";
+            break;
+          default:
+            errorMessage = error.message;
+        }
+      } else if (error instanceof Error) {
+         errorMessage = error.message;
+      }
       setFormError(errorMessage);
       toast({
         title: "Signup Failed",
         description: errorMessage,
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  const isLoading = authIsLoading || isSubmitting;
 
   return (
     <Card>
@@ -66,6 +91,7 @@ export function SignupForm() {
               placeholder="Your Name"
               {...form.register('name')}
               className={form.formState.errors.name ? 'border-destructive' : ''}
+              disabled={isLoading}
             />
             {form.formState.errors.name && (
               <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
@@ -79,6 +105,7 @@ export function SignupForm() {
               placeholder="yourname@mlrit.ac.in"
               {...form.register('email')}
               className={form.formState.errors.email ? 'border-destructive' : ''}
+              disabled={isLoading}
             />
             {form.formState.errors.email && (
               <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
@@ -92,6 +119,7 @@ export function SignupForm() {
               placeholder="••••••••"
               {...form.register('password')}
               className={form.formState.errors.password ? 'border-destructive' : ''}
+              disabled={isLoading}
             />
             {form.formState.errors.password && (
               <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>

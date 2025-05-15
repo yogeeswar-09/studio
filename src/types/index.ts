@@ -1,42 +1,48 @@
+
+import type { Timestamp } from 'firebase/firestore';
+
 export type User = {
-  id: string;
+  uid: string; // Firebase Auth User ID
   name: string;
   email: string; // MLRIT email
   avatarUrl?: string;
   contactInfo?: {
     phone?: string;
   };
+  createdAt: Timestamp | string; // Store as Firestore Timestamp, allow string for intermediate use
 };
 
 export type ListingCategory = 'Books' | 'Electronics' | 'Furniture' | 'Clothing' | 'Other';
 
 export type Listing = {
-  id: string;
+  id: string; // Firestore document ID
   title: string;
   description: string;
   price: number;
   category: ListingCategory;
   imageUrl: string;
-  sellerId: string;
+  sellerId: string; // User uid
   seller?: User; // Populated
-  createdAt: string; // ISO date string
+  createdAt: Timestamp | string; // Firestore Timestamp or ISO date string
   isSold?: boolean;
 };
 
 export type ChatMessage = {
-  id: string;
+  id: string; // Firestore document ID
   chatId: string;
-  senderId: string;
-  receiverId: string;
+  senderId: string; // User uid
+  receiverId: string; // User uid
   text: string;
-  timestamp: string; // ISO date string
+  timestamp: Timestamp | string; // Firestore Timestamp or ISO date string
   isRead?: boolean;
 };
 
 export type ChatConversation = {
-  id: string; // Could be composite key of user IDs or a unique ID
-  participants: [User, User];
+  id: string; // Firestore document ID
+  participants: [User, User]; // Should store participant UIDs and fetch full User objects if needed
+  participantUids: string[];
   lastMessage?: ChatMessage;
   unreadCount?: number;
   listingId?: string; // Optional: if chat is related to a specific listing
+  updatedAt: Timestamp | string;
 };
