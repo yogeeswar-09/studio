@@ -47,7 +47,7 @@ export function SignupForm() {
   const onSubmit = async (data: SignupFormValues) => {
     setFormError(null);
     setIsSubmitting(true);
-    let caughtError: any = null; // Define error variable in the broader scope
+    let caughtError: any = null; // Variable to hold the error for access in finally block
 
     try {
       await signup(data.name, data.email, data.password, data.year, data.branch);
@@ -94,11 +94,7 @@ export function SignupForm() {
         variant: "destructive",
       });
     } finally {
-      // Only set to false if not already handled by the early return for 'auth/email-already-in-use'
-      // Now 'caughtError' is accessible here.
-      // If 'auth/email-already-in-use' occurred, its catch block already set isSubmitting to false and returned.
-      // The condition below (caughtError?.code !== 'auth/email-already-in-use') will be false, so it won't be set again.
-      // For success (caughtError is null) or other errors, the condition will be true, and isSubmitting will be set to false.
+      // Use caughtError here, which is in scope
       if (caughtError?.code !== 'auth/email-already-in-use') {
         setIsSubmitting(false);
       }
