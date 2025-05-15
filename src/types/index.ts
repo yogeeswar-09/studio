@@ -19,6 +19,7 @@ export type User = {
   };
   createdAt: Timestamp | string; // Store as Firestore Timestamp, allow string for intermediate use
   updatedAt?: Timestamp | string;
+  // 'id' field was used for mock data, uid is the standard identifier
 };
 
 export type ListingCategory = 'Books' | 'Electronics' | 'Furniture' | 'Clothing' | 'Other';
@@ -40,9 +41,9 @@ export type Listing = {
 
 export type ChatMessage = {
   id: string; // Firestore document ID
-  chatId: string;
+  chatId: string; // ID of the parent conversation document
   senderId: string; // User uid
-  receiverId: string; // User uid
+  receiverId: string; // User uid (can be useful, though senderId is primary for display logic)
   text: string;
   timestamp: Timestamp | string; // Firestore Timestamp or ISO date string
   isRead?: boolean;
@@ -50,11 +51,15 @@ export type ChatMessage = {
 
 export type ChatConversation = {
   id: string; // Firestore document ID
-  participants: [User, User]; // Should store participant UIDs and fetch full User objects if needed
-  participantUids: string[];
-  lastMessage?: ChatMessage;
-  unreadCount?: number;
+  participantUids: string[]; // Array of two user UIDs
+  participants?: User[]; // Populated client-side by fetching user details based on UIDs
+  lastMessage?: {
+    text: string;
+    senderId: string;
+    timestamp: Timestamp | string;
+  };
+  unreadCount?: { [key: string]: number }; // e.g. { [userId]: count }
   listingId?: string; // Optional: if chat is related to a specific listing
-  updatedAt: Timestamp | string;
+  updatedAt: Timestamp | string; // Firestore Timestamp or ISO date string
+  createdAt: Timestamp | string; // Firestore Timestamp or ISO date string
 };
-

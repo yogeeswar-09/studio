@@ -1,130 +1,297 @@
+
 "use client";
 
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, Suspense, useCallback } from 'react';
+import { useSearchParams, useRouter }  from 'next/navigation';
 import { ChatList } from '@/components/chat/ChatList';
 import { ChatMessages } from '@/components/chat/ChatMessages';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { useAuth } from '@/hooks/use-auth';
-import { mockChatConversations, mockChatMessages, mockUsers, mockListings } from '@/lib/mock-data';
 import type { ChatConversation, ChatMessage, User } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { db } from '@/lib/firebase';
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  doc,
+  serverTimestamp,
+  Timestamp,
+  getDocs,
+  limit,
+  writeBatch,
+} from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+
+// Helper function to fetch user details from Firestore
+const fetchUserDetails = async (uid: string): Promise<User | null> => {
+  if (!uid) return null;
+  try {
+    const userDocRef = doc(db, "users", uid);
+    const userDocSnap = await getDoc(userDocRef);
+    if (userDocSnap.exists()) {
+      return { uid: userDocSnap.id, ...userDocSnap.data() } as User;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching user details:", error);
+    return null;
+  }
+};
+
 
 function ChatPageContent() {
-  const { user: currentUser } // Assuming useAuth provides the current user
-    = useAuth(); 
+  const { user: currentUser, isLoading: authLoading } = useAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { toast } = useToast();
 
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [otherParticipantDetails, setOtherParticipantDetails] = useState<User | null>(null);
 
+
+  // Effect to fetch conversations for the current user
   useEffect(() => {
-    // Simulate fetching conversations and messages
-    setIsLoading(true);
-    if (currentUser) {
-        // Filter conversations to only include those where the current user is a participant
-        const userConversations = mockChatConversations.filter(convo => 
-            convo.participants.some(p => p.id === currentUser.id)
-        );
-        setConversations(userConversations);
+    if (!currentUser?.uid) {
+      setIsLoadingConversations(false);
+      return;
+    }
+    setIsLoadingConversations(true);
+    const q = query(
+      collection(db, "conversations"),
+      where("participantUids", "array-contains", currentUser.uid),
+      orderBy("updatedAt", "desc")
+    );
 
-        const initialChatIdFromUrl = searchParams.get('chatId');
-        const newChatWithUserId = searchParams.get('newChatWith');
-        const itemId = searchParams.get('itemId');
+    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+      const convos: ChatConversation[] = [];
+      for (const docSnap of querySnapshot.docs) {
+        const data = docSnap.data();
+        const otherUid = data.participantUids.find((uid: string) => uid !== currentUser.uid);
+        let otherUserDetails: User | null = null;
+        if (otherUid) {
+          otherUserDetails = await fetchUserDetails(otherUid);
+        }
 
-        if (newChatWithUserId) {
-            // Try to find an existing conversation
-            let existingConvo = userConversations.find(c => 
-                c.participants.some(p => p.id === newChatWithUserId) && 
-                (!itemId || c.listingId === itemId) // If itemId is present, match it
-            );
+        convos.push({
+          id: docSnap.id,
+          ...data,
+          participants: otherUserDetails ? [currentUser, otherUserDetails] : [currentUser], // Store fetched details
+          updatedAt: (data.updatedAt as Timestamp)?.toDate()?.toISOString() || new Date().toISOString(),
+          createdAt: (data.createdAt as Timestamp)?.toDate()?.toISOString() || new Date().toISOString(),
+          lastMessage: data.lastMessage ? {
+            ...data.lastMessage,
+            timestamp: (data.lastMessage.timestamp as Timestamp)?.toDate()?.toISOString() || new Date().toISOString()
+          } : undefined,
+        } as ChatConversation);
+      }
+      setConversations(convos);
+      setIsLoadingConversations(false);
+    }, (error) => {
+      console.error("Error fetching conversations: ", error);
+      toast({ title: "Error", description: "Could not fetch conversations.", variant: "destructive" });
+      setIsLoadingConversations(false);
+    });
 
-            if (existingConvo) {
-                setSelectedChatId(existingConvo.id);
-            } else {
-                // Create a new mock conversation if one doesn't exist
-                const otherUser = mockUsers.find(u => u.id === newChatWithUserId);
-                if (otherUser) {
-                    const newConvoId = `convo-${Date.now()}`;
-                    const newConvo: ChatConversation = {
-                        id: newConvoId,
-                        participants: [currentUser, otherUser],
-                        listingId: itemId || undefined,
-                        lastMessage: undefined, // No messages yet
-                    };
-                    // Add to local state (in real app, this would be an API call)
-                    setConversations(prev => [newConvo, ...prev]);
-                    setSelectedChatId(newConvoId);
-                    setMessages([]); // New chat has no messages
-                }
+    return () => unsubscribe();
+  }, [currentUser, toast]);
+
+
+  // Effect to handle initial chat selection based on URL params or new chat creation
+  useEffect(() => {
+    if (!currentUser || conversations.length === 0 && !isLoadingConversations) return;
+
+    const chatIdFromUrl = searchParams.get('chatId');
+    const newChatWithUserId = searchParams.get('newChatWith'); // This is the UID of the other user
+    const itemId = searchParams.get('itemId');
+
+    const handleNewChat = async () => {
+      if (newChatWithUserId && currentUser.uid) {
+        // Prevent chatting with oneself
+        if (newChatWithUserId === currentUser.uid) {
+            toast({ title: "Cannot chat with yourself", variant: "destructive" });
+            router.replace('/chat'); // Clear query params
+            return;
+        }
+
+        // Check for existing conversation
+        const existingQueryConstraints = [
+            where("participantUids", "array-contains", currentUser.uid),
+        ];
+        const existingQuery = query(collection(db, "conversations"), ...existingQueryConstraints);
+        const existingSnapshot = await getDocs(existingQuery);
+        
+        let foundConversation: ChatConversation | null = null;
+        existingSnapshot.forEach(doc => {
+            const data = doc.data() as ChatConversation;
+            if (data.participantUids.includes(newChatWithUserId) && (!itemId || data.listingId === itemId)) {
+                foundConversation = {id: doc.id, ...data} as ChatConversation;
             }
-        } else if (initialChatIdFromUrl && userConversations.find(c => c.id === initialChatIdFromUrl)) {
-          setSelectedChatId(initialChatIdFromUrl);
-        } else if (userConversations.length > 0) {
-          setSelectedChatId(userConversations[0].id); // Default to first chat
+        });
+
+
+        if (foundConversation) {
+          setSelectedChatId(foundConversation.id);
+        } else {
+          // Create a new conversation
+          const otherUser = await fetchUserDetails(newChatWithUserId);
+          if (otherUser) {
+            const newConvoData = {
+              participantUids: [currentUser.uid, newChatWithUserId].sort(), // Store sorted UIDs for easier querying
+              participants: [currentUser, otherUser], // Temporarily, will be fetched
+              listingId: itemId || null,
+              lastMessage: null,
+              unreadCount: { [currentUser.uid]: 0, [newChatWithUserId]: 0 },
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            };
+            try {
+              const docRef = await addDoc(collection(db, "conversations"), newConvoData);
+              setSelectedChatId(docRef.id);
+              setMessages([]); // New chat has no messages
+            } catch (error) {
+              console.error("Error creating new conversation:", error);
+              toast({ title: "Error", description: "Could not start new chat.", variant: "destructive" });
+            }
+          } else {
+             toast({ title: "Error", description: "Could not find user to chat with.", variant: "destructive" });
+          }
+        }
+        // Clean up URL params after handling
+        const currentUrl = new URL(window.location.toString());
+        currentUrl.searchParams.delete('newChatWith');
+        currentUrl.searchParams.delete('itemId');
+        router.replace(currentUrl.toString());
+      }
+    };
+
+    if (newChatWithUserId) {
+      handleNewChat();
+    } else if (chatIdFromUrl) {
+        const convoExists = conversations.find(c => c.id === chatIdFromUrl);
+        if (convoExists) setSelectedChatId(chatIdFromUrl);
+        else if (conversations.length > 0 && !isLoadingConversations) setSelectedChatId(conversations[0].id);
+    } else if (conversations.length > 0 && !isLoadingConversations) {
+      setSelectedChatId(conversations[0].id); // Default to first chat if no specific chat is targeted
+    }
+
+  }, [currentUser, conversations, searchParams, router, toast, isLoadingConversations]);
+
+
+  // Effect to fetch messages for the selected chat
+  useEffect(() => {
+    if (!selectedChatId) {
+      setMessages([]);
+      setOtherParticipantDetails(null);
+      return;
+    }
+    setIsLoadingMessages(true);
+    const messagesQuery = query(
+      collection(db, "conversations", selectedChatId, "messages"),
+      orderBy("timestamp", "asc")
+    );
+
+    const unsubscribe = onSnapshot(messagesQuery, (querySnapshot) => {
+      const msgs: ChatMessage[] = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        timestamp: (doc.data().timestamp as Timestamp)?.toDate()?.toISOString() || new Date().toISOString(),
+      } as ChatMessage));
+      setMessages(msgs);
+      setIsLoadingMessages(false);
+    }, (error) => {
+      console.error(`Error fetching messages for chat ${selectedChatId}: `, error);
+      toast({ title: "Error", description: "Could not fetch messages.", variant: "destructive" });
+      setIsLoadingMessages(false);
+    });
+    
+    // Fetch other participant details for the selected chat
+    const currentConvo = conversations.find(c => c.id === selectedChatId);
+    if (currentConvo && currentUser) {
+        const otherUid = currentConvo.participantUids.find(uid => uid !== currentUser.uid);
+        if (otherUid) {
+            fetchUserDetails(otherUid).then(setOtherParticipantDetails);
+        } else {
+            setOtherParticipantDetails(null);
         }
     }
-    setIsLoading(false);
-  }, [currentUser, searchParams]);
 
 
-  useEffect(() => {
-    if (selectedChatId) {
-      setMessages(mockChatMessages[selectedChatId] || []);
-    } else {
-      setMessages([]);
-    }
-  }, [selectedChatId]);
+    return () => unsubscribe();
+  }, [selectedChatId, currentUser, conversations, toast]);
+
 
   const handleSelectChat = (chatId: string) => {
     setSelectedChatId(chatId);
-    // Update URL without full page reload
-    const current = new URLSearchParams(Array.from(searchParams.entries()));
-    current.set('chatId', chatId);
-    current.delete('newChatWith'); // Remove params used for initiating new chat
-    current.delete('itemId');
-    const search = current.toString();
-    window.history.pushState({}, '', `${window.location.pathname}?${search}`);
+    const currentUrl = new URL(window.location.toString());
+    currentUrl.searchParams.set('chatId', chatId);
+    currentUrl.searchParams.delete('newChatWith');
+    currentUrl.searchParams.delete('itemId');
+    router.push(currentUrl.toString(), { scroll: false });
   };
 
-  const handleSendMessage = (messageText: string) => {
-    if (!currentUser || !selectedChatId) return;
+  const handleSendMessage = async (messageText: string) => {
+    if (!currentUser?.uid || !selectedChatId) {
+        toast({title: "Cannot send message", description: "User or chat not selected.", variant: "destructive"});
+        return;
+    }
 
     const currentConvo = conversations.find(c => c.id === selectedChatId);
-    if (!currentConvo) return;
+    if (!currentConvo) {
+        toast({title: "Cannot send message", description: "Conversation not found.", variant: "destructive"});
+        return;
+    }
 
-    const receiver = currentConvo.participants.find(p => p.id !== currentUser.id);
-    if (!receiver) return;
+    const receiverUid = currentConvo.participantUids.find(uid => uid !== currentUser.uid);
+    if (!receiverUid) {
+        toast({title: "Cannot send message", description: "Recipient not found.", variant: "destructive"});
+        return;
+    }
 
-    const newMessage: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      chatId: selectedChatId,
-      senderId: currentUser.id,
-      receiverId: receiver.id,
+    const newMessage: Omit<ChatMessage, 'id' | 'chatId'> & { timestamp: any } = {
+      senderId: currentUser.uid,
+      receiverId: receiverUid, // Store receiverId as well
       text: messageText,
-      timestamp: new Date().toISOString(),
+      timestamp: serverTimestamp(),
+      isRead: false,
     };
     
-    // Update local state (in real app, send to backend and update via websockets/refetch)
-    setMessages(prev => [...prev, newMessage]);
-    // Update mockChatMessages for persistence in this mock setup
-    if (!mockChatMessages[selectedChatId]) mockChatMessages[selectedChatId] = [];
-    mockChatMessages[selectedChatId].push(newMessage);
+    try {
+      const messagesColRef = collection(db, "conversations", selectedChatId, "messages");
+      await addDoc(messagesColRef, newMessage);
 
-    // Update last message in conversation list
-    setConversations(prevConvos => prevConvos.map(convo => 
-      convo.id === selectedChatId ? { ...convo, lastMessage: newMessage } : convo
-    ));
+      const conversationDocRef = doc(db, "conversations", selectedChatId);
+      await updateDoc(conversationDocRef, {
+        lastMessage: {
+          text: messageText,
+          senderId: currentUser.uid,
+          timestamp: serverTimestamp(),
+        },
+        updatedAt: serverTimestamp(),
+        [`unreadCount.${receiverUid}`]: (currentConvo.unreadCount?.[receiverUid] || 0) + 1,
+      });
+      // Messages state will update via onSnapshot
+    } catch (error) {
+        console.error("Error sending message:", error);
+        toast({title: "Message Failed", description: "Could not send message.", variant: "destructive"});
+    }
   };
   
-  const selectedConversation = conversations.find(c => c.id === selectedChatId);
+  const selectedConversationDetails = conversations.find(c => c.id === selectedChatId);
 
-  if (isLoading || !currentUser) {
+
+  if (authLoading || isLoadingConversations) {
     return (
-      <div className="flex h-[calc(100vh-var(--header-height,4rem))]"> {/* Adjust for header height */}
-        <div className="w-1/4 border-r p-4 space-y-3">
+      <div className="flex h-[calc(100vh-var(--header-height,4rem))]">
+        <div className="w-1/4 border-r p-4 space-y-3 hidden md:block">
           <Skeleton className="h-10 w-full mb-4" />
           {[...Array(5)].map((_, i) => (
             <div key={i} className="flex items-center space-x-3">
@@ -136,7 +303,7 @@ function ChatPageContent() {
             </div>
           ))}
         </div>
-        <div className="w-3/4 flex flex-col">
+        <div className="w-full md:w-3/4 flex flex-col">
           <div className="p-4 border-b flex items-center space-x-3">
             <Skeleton className="h-10 w-10 rounded-full" />
             <Skeleton className="h-5 w-32" />
@@ -155,8 +322,8 @@ function ChatPageContent() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-var(--header-height,4rem))] overflow-hidden"> {/* Adjust for header height */}
-      <div className="w-full md:w-1/3 lg:w-1/4 hidden md:block"> {/* Hide on small screens, requires logic for mobile view */}
+    <div className="flex h-[calc(100vh-var(--header-height,4rem))] overflow-hidden">
+      <div className="w-full md:w-1/3 lg:w-1/4 border-r hidden md:flex md:flex-col">
         <ChatList
           conversations={conversations}
           currentUser={currentUser}
@@ -166,11 +333,13 @@ function ChatPageContent() {
       </div>
       <div className="flex-1 flex flex-col bg-muted/20">
         <ChatMessages
-          conversation={selectedConversation || null}
+          conversation={selectedConversationDetails || null} // Pass the full convo object
           messages={messages}
           currentUser={currentUser}
+          isLoading={isLoadingMessages}
+          otherParticipant={otherParticipantDetails} // Pass fetched details
         />
-        <ChatInput onSendMessage={handleSendMessage} disabled={!selectedChatId} />
+        <ChatInput onSendMessage={handleSendMessage} disabled={!selectedChatId || isLoadingMessages} />
       </div>
     </div>
   );
@@ -178,10 +347,8 @@ function ChatPageContent() {
 
 export default function ChatPage() {
   return (
-    // Suspense boundary for client components that use searchParams
-    <Suspense fallback={<div>Loading chat...</div>}>
+    <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading chat...</div>}>
       <ChatPageContent />
     </Suspense>
   );
 }
-
