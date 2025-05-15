@@ -1,3 +1,4 @@
+
 "use client";
 
 import { AppLogo } from "@/components/common/AppLogo";
@@ -52,12 +53,12 @@ export default function LandingPage() {
             Discover great deals or sell your unused items – books, electronics, furniture, and more – all within your trusted campus community.
           </p>
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-            <Link href="/auth/signup" legacyBehavior passHref>
+            <Link href="/signup" legacyBehavior passHref>
               <Button size="lg" className="w-full sm:w-auto text-lg px-8 py-6 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-transform hover:scale-105">
                 Get Started <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
-            <Link href="/auth/login" legacyBehavior passHref>
+            <Link href="/login" legacyBehavior passHref>
               <Button variant="outline" size="lg" className="w-full sm:w-auto text-lg px-8 py-6 shadow-lg transition-transform hover:scale-105">
                 Login
               </Button>

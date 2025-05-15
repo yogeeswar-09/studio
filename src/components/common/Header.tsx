@@ -1,3 +1,4 @@
+
 "use client";
 
 import { AppLogo } from "@/components/common/AppLogo";
@@ -81,7 +82,7 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-             <Link href="/auth/login">
+             <Link href="/login">
                 <Button>Login</Button>
              </Link>
           )}

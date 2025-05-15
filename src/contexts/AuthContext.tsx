@@ -13,7 +13,7 @@ import {
   type User as FirebaseUserType
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -50,9 +50,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser({ uid: fbUser.uid, ...userDocSnap.data() } as AppUser);
         } else {
           console.warn("User document not found in Firestore for UID:", fbUser.uid);
-          // This might happen if Firestore doc creation failed or is delayed.
-          // For a brief period, fbUser might be set but AppUser profile is not.
-          // Consider if a minimal AppUser object should be created here from fbUser, or if logout is safer.
           setUser(null); 
         }
       } else {
@@ -67,16 +64,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (!isLoading) {
-      const isAuthPage = pathname?.startsWith('/auth');
+      const isAuthRoute = pathname?.startsWith('/login') || pathname?.startsWith('/signup') || pathname?.startsWith('/verify-email');
       const isLandingPage = pathname === '/';
       
-      if (!user && !isAuthPage && !isLandingPage) {
-        router.push('/auth/login');
-      } else if (user && user.email && firebaseUser?.emailVerified && (isAuthPage || isLandingPage)) {
+      if (!user && !isAuthRoute && !isLandingPage) {
+        router.push('/login');
+      } else if (user && user.email && firebaseUser?.emailVerified && (isAuthRoute || isLandingPage)) {
         router.push('/dashboard');
-      } else if (user && user.email && !firebaseUser?.emailVerified && !pathname?.startsWith('/auth/verify-email') && !isAuthPage) {
-        // If user is logged in but email not verified, and not on verify page or other auth pages, redirect to verify.
-        router.push('/auth/verify-email');
+      } else if (user && user.email && !firebaseUser?.emailVerified && !pathname?.startsWith('/verify-email') && !isAuthRoute) {
+        router.push('/verify-email');
       }
     }
   }, [user, firebaseUser, isLoading, pathname, router]);
@@ -93,12 +89,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           variant: "destructive",
           duration: 7000,
         });
-        // firebaseSignOut(auth); // Sign out user if email not verified, let them go to verify page
-        // router.push('/auth/verify-email'); // Or redirect them
-        // For now, onAuthStateChanged will update state and might redirect based on the above useEffect.
-        // Consider specific redirection logic here if needed.
       }
-      // onAuthStateChanged will handle setting user state and redirecting
     } catch (error: any) {
       setIsLoading(false);
       console.error("Login error:", error);
@@ -132,19 +123,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await sendEmailVerification(fbUser);
       
       toast({ title: "Signup Successful!", description: "Please check your email to verify your account.", duration: 7000 });
-      router.push('/auth/verify-email');
+      router.push('/verify-email');
     } catch (error: any) {
       setIsLoading(false);
       console.error("Signup error:", error);
       throw error; 
     }
-    // setIsLoading(false); // onAuthStateChanged will handle final loading state update after router push
   };
 
   const logout = async () => {
     setIsLoading(true);
     await firebaseSignOut(auth);
-    // onAuthStateChanged will handle setting user to null and redirecting via useEffect.
   };
 
   const updateUserProfile = async (data: Partial<AppUser>, newAvatarFile?: File | null) => {
@@ -156,7 +145,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       let newAvatarUrl = data.avatarUrl || user.avatarUrl;
 
       if (newAvatarFile) {
-        // Delete old avatar if it exists and is from Firebase Storage
         if (user.avatarUrl && user.avatarUrl.includes('firebasestorage.googleapis.com')) {
             try {
                 const oldAvatarRef = ref(storage, user.avatarUrl);
@@ -187,7 +175,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
       }
 
-      setUser(prevUser => ({ ...prevUser!, ...profileToUpdateFirestore, avatarUrl: newAvatarUrl })); // Ensure avatarUrl is part of update
+      setUser(prevUser => ({ ...prevUser!, ...profileToUpdateFirestore, avatarUrl: newAvatarUrl }));
       
       toast({ title: "Profile Updated", description: "Your information has been saved." });
     } catch (error: any) {
@@ -206,7 +194,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     if (firebaseUser.emailVerified) {
       toast({ title: "Already Verified", description: "Your email is already verified." });
-      router.push('/auth/login'); // Or dashboard if appropriate
+      router.push('/login'); 
       return;
     }
     setIsLoading(true);

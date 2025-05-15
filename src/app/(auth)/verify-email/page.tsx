@@ -17,7 +17,7 @@ export default function VerifyEmailPage() {
   useEffect(() => {
     // If user becomes verified while on this page, redirect them.
     if (firebaseUser?.emailVerified) {
-      router.push('/auth/login?verified=true'); // Or directly to dashboard
+      router.push('/login?verified=true'); // Or directly to dashboard
     }
   }, [firebaseUser, router]);
 
@@ -36,7 +36,7 @@ export default function VerifyEmailPage() {
 
   const handleLogoutAndLogin = async () => {
     await logout();
-    router.push('/auth/login');
+    router.push('/login');
   }
 
   // This message can be shown if the component loads but firebaseUser is not yet available
@@ -62,7 +62,7 @@ export default function VerifyEmailPage() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="text-center">
-                 <Button onClick={() => router.push('/auth/login')}>Go to Login</Button>
+                 <Button onClick={() => router.push('/login')}>Go to Login</Button>
             </CardContent>
          </Card>
      )

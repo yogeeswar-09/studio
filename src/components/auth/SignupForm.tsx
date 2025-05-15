@@ -61,7 +61,7 @@ export function SignupForm() {
                 description: (
                 <>
                     This email is already in use. Please{' '}
-                    <Link href="/auth/login" className="underline text-primary">
+                    <Link href="/login" className="underline text-primary">
                     login
                     </Link>
                     .
