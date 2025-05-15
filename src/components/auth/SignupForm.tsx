@@ -49,11 +49,11 @@ export function SignupForm() {
     setIsSubmitting(true);
     let caughtError: any = null; 
 
-    console.log("Attempting signup with data:", data); // Log data being submitted
+    console.log("SignupForm: Attempting signup with data:", data);
 
     try {
       await signup(data.name, data.email, data.password, data.year, data.branch);
-      // Navigation and success toast are handled by AuthContext
+      // Navigation and success toast are handled by AuthContext & its useEffect
     } catch (error: any) {
       caughtError = error; 
       let errorMessage = "An unexpected error occurred. Please try again.";
@@ -64,9 +64,9 @@ export function SignupForm() {
                 title: "Email Already Registered",
                 description: (
                 <>
-                    This email is already in use. Please{' '}
-                    <Link href="/login" className="underline text-primary">
-                    login
+                    This email address is already in use. Please{' '}
+                    <Link href="/login" className="underline text-primary hover:text-primary/80">
+                    login here
                     </Link>
                     .
                 </>
@@ -74,12 +74,14 @@ export function SignupForm() {
                 variant: "destructive",
                 duration: 7000,
             });
+            // In this specific case, AuthContext might not set isLoading to false if it throws early.
+            // So, we set isSubmitting false here.
             setIsSubmitting(false); 
             return; 
         } else if (error.code === 'auth/invalid-email') {
-            errorMessage = "Invalid email format.";
+            errorMessage = "Invalid email format. Please use your @mlrit.ac.in address.";
         } else if (error.code === 'auth/weak-password') {
-            errorMessage = "Password is too weak. Please choose a stronger password.";
+            errorMessage = "Password is too weak. Please choose a stronger password (at least 6 characters).";
         } else {
             errorMessage = error.message || "An unknown Firebase error occurred.";
         }
@@ -87,13 +89,15 @@ export function SignupForm() {
          errorMessage = error.message;
       }
       
-      setFormError(errorMessage); // Set formError only if it's not 'auth/email-already-in-use'
+      setFormError(errorMessage);
       toast({
         title: "Signup Failed",
         description: errorMessage,
         variant: "destructive",
       });
     } finally {
+      // Only set to false if not already handled by the early return for 'auth/email-already-in-use'
+      // or if AuthContext didn't set isLoading (which in turn affects isSubmitting derived from authIsLoading)
       if (caughtError?.code !== 'auth/email-already-in-use') {
         setIsSubmitting(false);
       }
@@ -130,7 +134,7 @@ export function SignupForm() {
               <Label htmlFor="year">Year</Label>
               <Select
                 onValueChange={(value) => form.setValue('year', value as UserYear)}
-                defaultValue={form.getValues('year')}
+                value={form.watch('year')} // Ensure Select is controlled
                 disabled={isLoading}
               >
                 <SelectTrigger id="year" className={form.formState.errors.year ? 'border-destructive' : ''}>
@@ -151,7 +155,7 @@ export function SignupForm() {
               <Label htmlFor="branch">Branch</Label>
                <Select
                 onValueChange={(value) => form.setValue('branch', value as UserBranch)}
-                defaultValue={form.getValues('branch')}
+                value={form.watch('branch')} // Ensure Select is controlled
                 disabled={isLoading}
               >
                 <SelectTrigger id="branch" className={form.formState.errors.branch ? 'border-destructive' : ''}>
@@ -209,3 +213,4 @@ export function SignupForm() {
     </Card>
   );
 }
+

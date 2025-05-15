@@ -97,12 +97,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           variant: "destructive",
           duration: 7000,
         });
+        // The useEffect hook will handle redirection to /verify-email
       }
+      // Successful login and verified email will be handled by useEffect to redirect to dashboard
     } catch (error: any) {
       setIsLoading(false);
       console.error("Login error:", error);
       throw error; 
     }
+    // setIsLoading(false) might be set too early if redirection logic in useEffect is relied upon.
+    // For login, if successful, isLoading will be false after onAuthStateChanged.
   };
 
   const signup = async (name: string, email: string, password: string, year: UserYear, branch: UserBranch) => {
@@ -138,12 +142,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await setDoc(doc(db, "users", fbUser.uid), userProfile);
       console.log(`AuthContext: User profile stored in Firestore for ${email}`);
       
-      console.log(`AuthContext: Sending verification email to ${email}`);
+      console.log(`AuthContext: Preparing to send verification email to ${fbUser.email}...`);
       await sendEmailVerification(fbUser);
-      console.log(`AuthContext: Verification email sent to ${email}`);
+      console.log(`AuthContext: Verification email dispatched to ${fbUser.email}.`);
       
-      toast({ title: "Signup Successful!", description: "Please check your email to verify your account.", duration: 7000 });
-      router.push('/verify-email'); 
+      toast({ 
+        title: "Account Created! Verify Your Email", 
+        description: `A verification link has been sent to ${fbUser.email}. Please check your inbox (and spam folder).`, 
+        duration: 10000 
+      });
+      // Redirection to /verify-email will be handled by the useEffect hook when onAuthStateChanged updates firebaseUser
+      // and !firebaseUser.emailVerified. Explicit push might conflict or be redundant.
+      // setIsLoading(false) will be handled by onAuthStateChanged
     } catch (error: any) {
       setIsLoading(false);
       console.error(`AuthContext: Signup error for ${email}:`, error.code, error.message);
@@ -154,6 +164,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     setIsLoading(true);
     await firebaseSignOut(auth);
+    setUser(null);
+    setFirebaseUser(null);
+    setIsLoading(false); // Explicitly set isLoading false after state updates
     router.push('/login'); 
   };
 
@@ -167,28 +180,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       let newAvatarUrl = data.avatarUrl || user.avatarUrl; 
 
       if (newAvatarFile) {
-        if (user.avatarUrl && user.avatarUrl.includes('firebasestorage.googleapis.com')) {
+        if (user.avatarUrl && user.avatarUrl.includes('firebasestorage.googleapis.com') && !user.avatarUrl.includes('placehold.co')) {
             try {
                 const oldAvatarPath = new URL(user.avatarUrl).pathname.split('/o/')[1].split('?')[0];
                 const decodedOldAvatarPath = decodeURIComponent(oldAvatarPath);
                 const oldAvatarRef = ref(storage, decodedOldAvatarPath);
                 await deleteObject(oldAvatarRef);
             } catch (e) {
-                console.warn("Could not delete old avatar, it might not exist or path was incorrect:", e);
+                console.warn("Could not delete old avatar from storage, it might not exist or path was incorrect:", e);
             }
         }
         const storageRefPath = `avatars/${firebaseUser.uid}/${Date.now()}_${newAvatarFile.name}`;
         const imageRef = ref(storage, storageRefPath);
         const snapshot = await uploadBytes(imageRef, newAvatarFile);
         newAvatarUrl = await getDownloadURL(snapshot.ref);
-      } else if (data.avatarUrl && data.avatarUrl !== user.avatarUrl && user.avatarUrl && user.avatarUrl.includes('firebasestorage.googleapis.com')) {
+      } else if (data.avatarUrl && data.avatarUrl !== user.avatarUrl && user.avatarUrl && user.avatarUrl.includes('firebasestorage.googleapis.com') && !user.avatarUrl.includes('placehold.co')) {
+         // If a new URL is pasted and it's different from the old one (which was a Firebase Storage URL)
          try {
             const oldAvatarPath = new URL(user.avatarUrl).pathname.split('/o/')[1].split('?')[0];
             const decodedOldAvatarPath = decodeURIComponent(oldAvatarPath);
             const oldAvatarRef = ref(storage, decodedOldAvatarPath);
             await deleteObject(oldAvatarRef);
         } catch (e) {
-            console.warn("Could not delete old avatar when switching to new URL:", e);
+            console.warn("Could not delete old avatar from storage when switching to new URL:", e);
         }
       }
       
@@ -202,19 +216,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userDocRef = doc(db, "users", firebaseUser.uid);
       await updateDoc(userDocRef, firestoreUpdateData);
 
-      if (data.name || newAvatarUrl) {
+      if ((data.name && data.name !== firebaseUser.displayName) || (newAvatarUrl && newAvatarUrl !== firebaseUser.photoURL)) {
         await updateFirebaseProfile(firebaseUser, {
           displayName: data.name || firebaseUser.displayName,
           photoURL: newAvatarUrl || firebaseUser.photoURL,
         });
       }
 
-      setUser(prevUser => ({ 
+      // Optimistically update local state to avoid re-fetch, ensure all fields are correctly assigned
+      setUser(prevUser => {
+        const updatedUser = { 
           ...prevUser!, 
-          ...firestoreUpdateData, 
-          name: data.name || prevUser!.name, 
-          avatarUrl: newAvatarUrl, 
-        }));
+          name: data.name || prevUser!.name, // Use new name or fallback to previous
+          contactInfo: data.contactInfo !== undefined ? data.contactInfo : prevUser!.contactInfo, // Handle contactInfo update
+          avatarUrl: newAvatarUrl, // Always update avatarUrl if it changed
+          // Ensure other fields like uid, email, year, branch, createdAt are preserved
+          uid: prevUser!.uid,
+          email: prevUser!.email,
+          year: prevUser!.year,
+          branch: prevUser!.branch,
+          createdAt: prevUser!.createdAt,
+          // updatedAt will be a string representation after fetch, so no need to explicitly format here
+        };
+        return updatedUser as AppUser;
+      });
       
       toast({ title: "Profile Updated", description: "Your information has been saved." });
     } catch (error: any) {
@@ -255,3 +280,4 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
+
