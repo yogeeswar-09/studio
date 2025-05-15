@@ -41,29 +41,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      setIsLoading(true);
-      if (fbUser) {
-        setFirebaseUser(fbUser);
-        const userDocRef = doc(db, "users", fbUser.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        if (userDocSnap.exists()) {
-          const userData = userDocSnap.data();
-          const appUser: AppUser = { 
-            uid: fbUser.uid, 
-            ...userData,
-            createdAt: (userData.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
-            updatedAt: (userData.updatedAt as Timestamp)?.toDate().toISOString() || undefined,
-          } as AppUser;
-          setUser(appUser);
+      setIsLoading(true); // Start loading when auth state changes
+      try {
+        if (fbUser) {
+          console.log("AuthContext: onAuthStateChanged - Firebase user found:", fbUser.uid);
+          setFirebaseUser(fbUser);
+          const userDocRef = doc(db, "users", fbUser.uid);
+          const userDocSnap = await getDoc(userDocRef);
+          if (userDocSnap.exists()) {
+            console.log("AuthContext: onAuthStateChanged - User document found in Firestore for:", fbUser.uid);
+            const userData = userDocSnap.data();
+            const appUser: AppUser = { 
+              uid: fbUser.uid, 
+              ...userData,
+              createdAt: (userData.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+              updatedAt: (userData.updatedAt as Timestamp)?.toDate().toISOString() || undefined,
+            } as AppUser;
+            setUser(appUser);
+          } else {
+            console.warn("AuthContext: onAuthStateChanged - User document NOT found in Firestore for UID:", fbUser.uid, "This might occur if Firestore write failed after Auth creation or user was deleted from DB but not Auth.");
+            setUser(null); 
+          }
         } else {
-          console.warn("User document not found in Firestore for UID:", fbUser.uid, "This might occur if Firestore write failed after Auth creation.");
-          setUser(null); 
+          console.log("AuthContext: onAuthStateChanged - No Firebase user.");
+          setFirebaseUser(null);
+          setUser(null);
         }
-      } else {
-        setFirebaseUser(null);
-        setUser(null);
+      } catch (error) {
+        console.error("AuthContext: onAuthStateChanged - Error processing auth state:", error);
+        setUser(null); // Ensure clean state on error
+        setFirebaseUser(fbUser); // Keep fbUser if error was during profile fetch
+      } finally {
+        setIsLoading(false); // CRITICAL: Always stop loading
+        console.log("AuthContext: onAuthStateChanged - Processing finished, isLoading set to false.");
       }
-      setIsLoading(false);
     });
 
     return () => unsubscribe();
@@ -75,11 +86,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const isVerifyEmailRoute = pathname === '/verify-email';
       const isLandingPage = pathname === '/';
       
+      console.log(`AuthContext: useEffect - Path: ${pathname}, User: ${!!user}, Verified: ${firebaseUser?.emailVerified}, isLoading: ${isLoading}`);
+
       if (!user && !isAuthRoute && !isVerifyEmailRoute && !isLandingPage) {
+        console.log("AuthContext: useEffect - Redirecting to /login (user not found, not on auth/verify/landing)");
         router.push('/login');
       } else if (user && firebaseUser?.emailVerified && (isAuthRoute || isVerifyEmailRoute || isLandingPage)) {
+        console.log("AuthContext: useEffect - Redirecting to /dashboard (user found, verified, on auth/verify/landing)");
         router.push('/dashboard');
       } else if (user && !firebaseUser?.emailVerified && !isVerifyEmailRoute && !isAuthRoute && !isLandingPage) {
+        console.log("AuthContext: useEffect - Redirecting to /verify-email (user found, not verified, not on verify/auth/landing)");
         router.push('/verify-email');
       }
     }
@@ -90,23 +106,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // onAuthStateChanged will handle setting user and setIsLoading(false)
       if (!userCredential.user.emailVerified) {
         toast({
           title: "Email Not Verified",
-          description: "Please verify your email. Redirecting to verification page...",
+          description: "Please verify your email. You might be redirected shortly.",
           variant: "destructive",
           duration: 7000,
         });
-        // The useEffect hook will handle redirection to /verify-email
       }
-      // Successful login and verified email will be handled by useEffect to redirect to dashboard
+      // Successful login processing continues in onAuthStateChanged and useEffect
     } catch (error: any) {
-      setIsLoading(false);
-      console.error("Login error:", error);
+      setIsLoading(false); // Ensure loading stops on login API error
+      console.error("AuthContext: Login error -", error.code, error.message);
       throw error; 
     }
-    // setIsLoading(false) might be set too early if redirection logic in useEffect is relied upon.
-    // For login, if successful, isLoading will be false after onAuthStateChanged.
   };
 
   const signup = async (name: string, email: string, password: string, year: UserYear, branch: UserBranch) => {
@@ -115,7 +129,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       if (!email.endsWith('@mlrit.ac.in')) {
          toast({ title: "Invalid Email Domain", description: "Only MLRIT email addresses (@mlrit.ac.in) are allowed.", variant: "destructive" });
-         setIsLoading(false);
+         setIsLoading(false); // Stop loading if validation fails early
          throw new Error('Only MLRIT email addresses are allowed.');
       }
 
@@ -148,14 +162,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       toast({ 
         title: "Account Created! Verify Your Email", 
-        description: `A verification link has been sent to ${fbUser.email}. Please check your inbox (and spam folder).`, 
+        description: `A verification link has been sent to ${fbUser.email}. Please check your inbox (and spam folder). You'll be redirected shortly.`, 
         duration: 10000 
       });
-      // Redirection to /verify-email will be handled by the useEffect hook when onAuthStateChanged updates firebaseUser
-      // and !firebaseUser.emailVerified. Explicit push might conflict or be redundant.
-      // setIsLoading(false) will be handled by onAuthStateChanged
+      // onAuthStateChanged and useEffect will handle redirection and final isLoading state
     } catch (error: any) {
-      setIsLoading(false);
+      setIsLoading(false); // Ensure loading stops on signup API error
       console.error(`AuthContext: Signup error for ${email}:`, error.code, error.message);
       throw error; 
     }
@@ -164,10 +176,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     setIsLoading(true);
     await firebaseSignOut(auth);
-    setUser(null);
-    setFirebaseUser(null);
-    setIsLoading(false); // Explicitly set isLoading false after state updates
-    router.push('/login'); 
+    // onAuthStateChanged will set user to null and then setIsLoading(false)
   };
 
   const updateUserProfile = async (data: Partial<AppUser>, newAvatarFile?: File | null) => {
@@ -195,7 +204,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const snapshot = await uploadBytes(imageRef, newAvatarFile);
         newAvatarUrl = await getDownloadURL(snapshot.ref);
       } else if (data.avatarUrl && data.avatarUrl !== user.avatarUrl && user.avatarUrl && user.avatarUrl.includes('firebasestorage.googleapis.com') && !user.avatarUrl.includes('placehold.co')) {
-         // If a new URL is pasted and it's different from the old one (which was a Firebase Storage URL)
          try {
             const oldAvatarPath = new URL(user.avatarUrl).pathname.split('/o/')[1].split('?')[0];
             const decodedOldAvatarPath = decodeURIComponent(oldAvatarPath);
@@ -222,21 +230,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           photoURL: newAvatarUrl || firebaseUser.photoURL,
         });
       }
-
-      // Optimistically update local state to avoid re-fetch, ensure all fields are correctly assigned
+      
       setUser(prevUser => {
         const updatedUser = { 
           ...prevUser!, 
-          name: data.name || prevUser!.name, // Use new name or fallback to previous
-          contactInfo: data.contactInfo !== undefined ? data.contactInfo : prevUser!.contactInfo, // Handle contactInfo update
-          avatarUrl: newAvatarUrl, // Always update avatarUrl if it changed
-          // Ensure other fields like uid, email, year, branch, createdAt are preserved
+          name: data.name || prevUser!.name,
+          contactInfo: data.contactInfo !== undefined ? data.contactInfo : prevUser!.contactInfo,
+          avatarUrl: newAvatarUrl,
           uid: prevUser!.uid,
           email: prevUser!.email,
           year: prevUser!.year,
           branch: prevUser!.branch,
           createdAt: prevUser!.createdAt,
-          // updatedAt will be a string representation after fetch, so no need to explicitly format here
         };
         return updatedUser as AppUser;
       });
