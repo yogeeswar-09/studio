@@ -9,14 +9,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { FirebaseError } from 'firebase/app';
+import { userYears, userBranches, type UserYear, type UserBranch } from '@/types';
+import Link from 'next/link';
 
 const signupSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Invalid email address." }).endsWith("@mlrit.ac.in", { message: "Must be an MLRIT email address." }),
+  year: z.enum(userYears, { required_error: "Please select your year of study." }),
+  branch: z.enum(userBranches, { required_error: "Please select your branch." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
 });
 
@@ -33,6 +38,8 @@ export function SignupForm() {
     defaultValues: {
       name: '',
       email: '',
+      year: undefined,
+      branch: undefined,
       password: '',
     },
   });
@@ -41,15 +48,30 @@ export function SignupForm() {
     setFormError(null);
     setIsSubmitting(true);
     try {
-      await signup(data.name, data.email, data.password);
+      await signup(data.name, data.email, data.password, data.year, data.branch);
       // Toast and navigation are handled by AuthContext or the signup function itself
     } catch (error: any) {
       let errorMessage = "An unexpected error occurred. Please try again.";
       if (error instanceof FirebaseError) {
         switch (error.code) {
           case 'auth/email-already-in-use':
-            errorMessage = "This email is already registered. Try logging in.";
-            break;
+            errorMessage = "This email is already registered. Please login instead.";
+             toast({
+                title: "Email Already Registered",
+                description: (
+                <>
+                    This email is already in use. Please{' '}
+                    <Link href="/auth/login" className="underline text-primary">
+                    login
+                    </Link>
+                    .
+                </>
+                ),
+                variant: "destructive",
+                duration: 7000,
+            });
+            setIsSubmitting(false);
+            return; // Prevent further processing for this specific error
           case 'auth/invalid-email':
             errorMessage = "Invalid email format.";
             break;
@@ -69,7 +91,10 @@ export function SignupForm() {
         variant: "destructive",
       });
     } finally {
-      setIsSubmitting(false);
+      // Only set to false if not already handled by the early return for 'auth/email-already-in-use'
+      if (error?.code !== 'auth/email-already-in-use') {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -79,7 +104,7 @@ export function SignupForm() {
     <Card>
       <CardHeader>
         <CardTitle>Create an Account</CardTitle>
-        <CardDescription>Join CampusKart using your MLRIT email.</CardDescription>
+        <CardDescription>Join CampusKart using your MLRIT email and details.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -97,6 +122,51 @@ export function SignupForm() {
               <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
             )}
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="year">Year</Label>
+              <Select 
+                onValueChange={(value) => form.setValue('year', value as UserYear)} 
+                defaultValue={form.getValues('year')}
+                disabled={isLoading}
+              >
+                <SelectTrigger id="year" className={form.formState.errors.year ? 'border-destructive' : ''}>
+                  <SelectValue placeholder="Select year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {userYears.map(year => (
+                    <SelectItem key={year} value={year}>{year}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {form.formState.errors.year && (
+                <p className="text-sm text-destructive">{form.formState.errors.year.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="branch">Branch</Label>
+               <Select 
+                onValueChange={(value) => form.setValue('branch', value as UserBranch)} 
+                defaultValue={form.getValues('branch')}
+                disabled={isLoading}
+              >
+                <SelectTrigger id="branch" className={form.formState.errors.branch ? 'border-destructive' : ''}>
+                  <SelectValue placeholder="Select branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {userBranches.map(branch => (
+                    <SelectItem key={branch} value={branch}>{branch}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {form.formState.errors.branch && (
+                <p className="text-sm text-destructive">{form.formState.errors.branch.message}</p>
+              )}
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="email">MLRIT Email</Label>
             <Input

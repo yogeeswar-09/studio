@@ -8,11 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/hooks/use-auth';
 import { Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import Image from 'next/image';
 import { ChangeEvent, useState, useEffect } from 'react';
 import type { User as AppUser } from '@/types';
 
@@ -22,6 +21,8 @@ const profileSchema = z.object({
     message: "Invalid phone number format (10-15 digits)."
   }),
   avatarUrl: z.string().url("Invalid URL for pasted link.").optional().or(z.literal('')),
+  // Year and Branch are usually set at signup and might not be editable here
+  // If they should be editable, add them to this schema and form.
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -60,7 +61,7 @@ export function UserInfoForm() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatarPreview(reader.result as string);
-        form.setValue('avatarUrl', ''); // Clear pasted URL if file is chosen
+        form.setValue('avatarUrl', ''); 
       };
       reader.readAsDataURL(file);
     }
@@ -68,7 +69,7 @@ export function UserInfoForm() {
 
   const handlePastedAvatarUrl = (url: string) => {
     setAvatarPreview(url);
-    setAvatarFile(null); // Clear file if URL is pasted
+    setAvatarFile(null); 
     form.setValue('avatarUrl', url);
   }
 
@@ -79,9 +80,9 @@ export function UserInfoForm() {
     const profileUpdateData: Partial<AppUser> = {
       name: data.name,
       contactInfo: { phone: data.phone || undefined },
-      // avatarUrl will be handled by updateUserProfile based on avatarFile or data.avatarUrl
     };
-    if(data.avatarUrl && !avatarFile) { // if URL was pasted and no new file selected
+
+    if(data.avatarUrl && !avatarFile) { 
         profileUpdateData.avatarUrl = data.avatarUrl;
     }
 
@@ -89,11 +90,10 @@ export function UserInfoForm() {
     try {
         await updateUserProfile(profileUpdateData, avatarFile);
     } catch (error) {
-        // Error toast is handled in updateUserProfile
         console.error("Failed to update profile:", error);
     } finally {
         setFormLoading(false);
-        setAvatarFile(null); // Reset file state
+        // setAvatarFile(null); // Keep avatarFile for potential re-submission or clear it explicitly
     }
   };
 
@@ -122,7 +122,7 @@ export function UserInfoForm() {
               <FormControl>
                 <div className="mt-2 flex flex-col items-center gap-4">
                   <Avatar className="h-32 w-32">
-                    <AvatarImage src={avatarPreview || undefined} alt={user.name} />
+                    <AvatarImage src={avatarPreview || undefined} alt={user.name} data-ai-hint="user avatar" />
                     <AvatarFallback className="text-3xl">
                       {getInitials(user.name)}
                     </AvatarFallback>
@@ -154,7 +154,7 @@ export function UserInfoForm() {
                             field.onChange(e.target.value);
                             handlePastedAvatarUrl(e.target.value);
                           }}
-                          disabled={formLoading}
+                          disabled={formLoading || !!avatarFile}
                         />
                     )}
                   />
@@ -179,9 +179,23 @@ export function UserInfoForm() {
             
             <FormItem>
               <FormLabel>Email (Verified)</FormLabel>
-              <Input value={user.email} disabled className="bg-muted/50" />
+              <Input value={user.email} disabled className="bg-muted/50 cursor-not-allowed" />
               <FormDescription>Your MLRIT email is verified and cannot be changed.</FormDescription>
             </FormItem>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <FormItem>
+                <FormLabel>Year</FormLabel>
+                <Input value={user.year || 'Not set'} disabled className="bg-muted/50 cursor-not-allowed" />
+                 <FormDescription>Your year of study (set at signup).</FormDescription>
+              </FormItem>
+              <FormItem>
+                <FormLabel>Branch</FormLabel>
+                <Input value={user.branch || 'Not set'} disabled className="bg-muted/50 cursor-not-allowed" />
+                <FormDescription>Your branch (set at signup).</FormDescription>
+              </FormItem>
+            </div>
+
 
             <FormField
               control={form.control}

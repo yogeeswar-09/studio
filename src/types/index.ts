@@ -1,15 +1,24 @@
 
 import type { Timestamp } from 'firebase/firestore';
 
+export type UserYear = '1st Year' | '2nd Year' | '3rd Year' | '4th Year';
+export const userYears: UserYear[] = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+
+export type UserBranch = 'CSE' | 'ECE' | 'EEE' | 'MECH' | 'CIVIL' | 'IT' | 'AIML' | 'DS' | 'CSBS' | 'Other';
+export const userBranches: UserBranch[] = ['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT', 'AIML', 'DS', 'CSBS', 'Other'];
+
 export type User = {
   uid: string; // Firebase Auth User ID
   name: string;
   email: string; // MLRIT email
+  year?: UserYear;
+  branch?: UserBranch;
   avatarUrl?: string;
   contactInfo?: {
     phone?: string;
   };
   createdAt: Timestamp | string; // Store as Firestore Timestamp, allow string for intermediate use
+  updatedAt?: Timestamp | string;
 };
 
 export type ListingCategory = 'Books' | 'Electronics' | 'Furniture' | 'Clothing' | 'Other';
@@ -48,3 +57,4 @@ export type ChatConversation = {
   listingId?: string; // Optional: if chat is related to a specific listing
   updatedAt: Timestamp | string;
 };
+
