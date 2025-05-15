@@ -49,19 +49,16 @@ export function SignupForm() {
     setIsSubmitting(true);
     let caughtError: any = null; 
 
+    console.log("Attempting signup with data:", data); // Log data being submitted
+
     try {
-      // This calls the signup function in AuthContext which handles:
-      // 1. Firebase Auth user creation
-      // 2. Firestore document creation for user profile
-      // 3. Sending verification email
       await signup(data.name, data.email, data.password, data.year, data.branch);
-      // Toast and navigation are handled by AuthContext
+      // Navigation and success toast are handled by AuthContext
     } catch (error: any) {
       caughtError = error; 
       let errorMessage = "An unexpected error occurred. Please try again.";
       if (error instanceof FirebaseError) {
-        switch (error.code) {
-          case 'auth/email-already-in-use':
+        if (error.code === 'auth/email-already-in-use') {
             errorMessage = "This email is already registered. Please login instead.";
              toast({
                 title: "Email Already Registered",
@@ -77,31 +74,26 @@ export function SignupForm() {
                 variant: "destructive",
                 duration: 7000,
             });
-            // For this specific error, we don't want the generic formError to show,
-            // and isSubmitting is set false directly here before returning.
             setIsSubmitting(false); 
             return; 
-          case 'auth/invalid-email':
+        } else if (error.code === 'auth/invalid-email') {
             errorMessage = "Invalid email format.";
-            break;
-          case 'auth/weak-password':
+        } else if (error.code === 'auth/weak-password') {
             errorMessage = "Password is too weak. Please choose a stronger password.";
-            break;
-          default:
+        } else {
             errorMessage = error.message || "An unknown Firebase error occurred.";
         }
       } else if (error instanceof Error) {
          errorMessage = error.message;
       }
-      setFormError(errorMessage);
+      
+      setFormError(errorMessage); // Set formError only if it's not 'auth/email-already-in-use'
       toast({
         title: "Signup Failed",
         description: errorMessage,
         variant: "destructive",
       });
     } finally {
-      // Only set isSubmitting to false if it's not the 'auth/email-already-in-use' error,
-      // as that case handles it explicitly before returning.
       if (caughtError?.code !== 'auth/email-already-in-use') {
         setIsSubmitting(false);
       }
@@ -205,7 +197,7 @@ export function SignupForm() {
               <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
             )}
           </div>
-           {formError && ( // Generic form error display
+           {formError && ( 
             <p className="text-sm text-destructive text-center">{formError}</p>
           )}
           <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading}>
@@ -217,4 +209,3 @@ export function SignupForm() {
     </Card>
   );
 }
-

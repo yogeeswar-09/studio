@@ -47,7 +47,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const userDocRef = doc(db, "users", fbUser.uid);
         const userDocSnap = await getDoc(userDocRef);
         if (userDocSnap.exists()) {
-          // Convert Firestore Timestamps to ISO strings if they exist
           const userData = userDocSnap.data();
           const appUser: AppUser = { 
             uid: fbUser.uid, 
@@ -57,10 +56,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           } as AppUser;
           setUser(appUser);
         } else {
-          console.warn("User document not found in Firestore for UID:", fbUser.uid);
-          // Potentially a user exists in Auth but not Firestore (e.g. if Firestore doc creation failed post-signup)
-          // For now, treat as logged out from app perspective, or create a default profile.
-          // Creating profile here might be complex if essential signup info isn't available.
+          console.warn("User document not found in Firestore for UID:", fbUser.uid, "This might occur if Firestore write failed after Auth creation.");
           setUser(null); 
         }
       } else {
@@ -82,10 +78,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!user && !isAuthRoute && !isVerifyEmailRoute && !isLandingPage) {
         router.push('/login');
       } else if (user && firebaseUser?.emailVerified && (isAuthRoute || isVerifyEmailRoute || isLandingPage)) {
-        // If user is logged in, email verified, and on an auth/landing/verify page, redirect to dashboard
         router.push('/dashboard');
       } else if (user && !firebaseUser?.emailVerified && !isVerifyEmailRoute && !isAuthRoute && !isLandingPage) {
-        // If user is logged in, email NOT verified, and NOT on verify/auth/landing page, redirect to verify email
         router.push('/verify-email');
       }
     }
@@ -97,65 +91,62 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       if (!userCredential.user.emailVerified) {
-        // User is not cleared, isLoading remains true, AuthContext useEffect will redirect to /verify-email
         toast({
           title: "Email Not Verified",
           description: "Please verify your email. Redirecting to verification page...",
           variant: "destructive",
           duration: 7000,
         });
-        // No explicit redirect here, relying on onAuthStateChanged and subsequent useEffect
-      } else {
-        // Successful login with verified email - onAuthStateChanged will update user, useEffect will redirect.
-        // Toast is handled in LoginForm on successful try for "Login Successful"
       }
     } catch (error: any) {
       setIsLoading(false);
       console.error("Login error:", error);
       throw error; 
     }
-    // setIsLoading(false) will be handled by onAuthStateChanged flow or catch block
   };
 
   const signup = async (name: string, email: string, password: string, year: UserYear, branch: UserBranch) => {
     setIsLoading(true);
+    console.log(`AuthContext: Attempting signup for ${email}`);
     try {
       if (!email.endsWith('@mlrit.ac.in')) {
          toast({ title: "Invalid Email Domain", description: "Only MLRIT email addresses (@mlrit.ac.in) are allowed.", variant: "destructive" });
+         setIsLoading(false);
          throw new Error('Only MLRIT email addresses are allowed.');
       }
 
-      // Step 1: Create user in Firebase Authentication
+      console.log(`AuthContext: Creating user in Firebase Auth for ${email}`);
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const fbUser = userCredential.user;
+      console.log(`AuthContext: Firebase Auth user created for ${email} with UID ${fbUser.uid}`);
 
-      // Step 2: Update Firebase Auth profile (e.g., displayName)
       await updateFirebaseProfile(fbUser, { displayName: name });
+      console.log(`AuthContext: Firebase Auth profile updated for ${email}`);
 
-      // Step 3: Prepare user profile data for Firestore
       const userProfile: Omit<AppUser, 'uid' | 'createdAt' | 'updatedAt'> & { createdAt: any, updatedAt: any } = {
         name,
         email,
         year,
         branch,
         avatarUrl: `https://placehold.co/150x150.png?text=${name.substring(0,2).toUpperCase()}`,
-        contactInfo: {}, // Initialize empty contact info
+        contactInfo: {}, 
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
-      // Step 4: Store user profile in Firestore
+      console.log(`AuthContext: Storing user profile in Firestore for ${email}`);
       await setDoc(doc(db, "users", fbUser.uid), userProfile);
+      console.log(`AuthContext: User profile stored in Firestore for ${email}`);
       
-      // Step 5: Send email verification
+      console.log(`AuthContext: Sending verification email to ${email}`);
       await sendEmailVerification(fbUser);
+      console.log(`AuthContext: Verification email sent to ${email}`);
       
       toast({ title: "Signup Successful!", description: "Please check your email to verify your account.", duration: 7000 });
-      // setIsLoading(false) is not explicitly set here because router.push will unmount or change context
-      router.push('/verify-email'); // Redirect to verification page
+      router.push('/verify-email'); 
     } catch (error: any) {
-      setIsLoading(false); // Ensure loading is false on error
-      console.error("Signup error:", error);
+      setIsLoading(false);
+      console.error(`AuthContext: Signup error for ${email}:`, error.code, error.message);
       throw error; 
     }
   };
@@ -163,9 +154,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     setIsLoading(true);
     await firebaseSignOut(auth);
-    // setUser and setFirebaseUser to null will be handled by onAuthStateChanged
-    // isLoading will be set to false by onAuthStateChanged
-    router.push('/login'); // Explicit redirect after sign out
+    router.push('/login'); 
   };
 
   const updateUserProfile = async (data: Partial<AppUser>, newAvatarFile?: File | null) => {
@@ -175,11 +164,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     setIsLoading(true);
     try {
-      let newAvatarUrl = data.avatarUrl || user.avatarUrl; // Start with passed URL or existing one
+      let newAvatarUrl = data.avatarUrl || user.avatarUrl; 
 
-      // If a new file is provided, upload it and update the URL
       if (newAvatarFile) {
-        // Attempt to delete old avatar if it was from Firebase Storage
         if (user.avatarUrl && user.avatarUrl.includes('firebasestorage.googleapis.com')) {
             try {
                 const oldAvatarPath = new URL(user.avatarUrl).pathname.split('/o/')[1].split('?')[0];
@@ -195,7 +182,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const snapshot = await uploadBytes(imageRef, newAvatarFile);
         newAvatarUrl = await getDownloadURL(snapshot.ref);
       } else if (data.avatarUrl && data.avatarUrl !== user.avatarUrl && user.avatarUrl && user.avatarUrl.includes('firebasestorage.googleapis.com')) {
-        // If URL is explicitly changed from a Firebase Storage URL to a new non-file URL, delete old storage avatar.
          try {
             const oldAvatarPath = new URL(user.avatarUrl).pathname.split('/o/')[1].split('?')[0];
             const decodedOldAvatarPath = decodeURIComponent(oldAvatarPath);
@@ -206,18 +192,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
       
-      // Data to update in Firestore (excluding uid, email, year, branch unless made editable)
       const firestoreUpdateData: Partial<Omit<AppUser, 'uid' | 'email' | 'year' | 'branch' | 'createdAt'>> & {updatedAt: any} = { 
         name: data.name,
         contactInfo: data.contactInfo,
-        avatarUrl: newAvatarUrl, // Use the potentially new avatar URL
+        avatarUrl: newAvatarUrl, 
         updatedAt: serverTimestamp(),
       };
       
       const userDocRef = doc(db, "users", firebaseUser.uid);
       await updateDoc(userDocRef, firestoreUpdateData);
 
-      // Update Firebase Auth profile (displayName and photoURL)
       if (data.name || newAvatarUrl) {
         await updateFirebaseProfile(firebaseUser, {
           displayName: data.name || firebaseUser.displayName,
@@ -225,12 +209,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
       }
 
-      // Update local user state
       setUser(prevUser => ({ 
           ...prevUser!, 
           ...firestoreUpdateData, 
-          name: data.name || prevUser!.name, // ensure name is updated
-          avatarUrl: newAvatarUrl, // ensure avatar is updated
+          name: data.name || prevUser!.name, 
+          avatarUrl: newAvatarUrl, 
         }));
       
       toast({ title: "Profile Updated", description: "Your information has been saved." });
@@ -250,7 +233,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     if (firebaseUser.emailVerified) {
       toast({ title: "Already Verified", description: "Your email is already verified." });
-      router.push('/dashboard'); // redirect if already verified
+      router.push('/dashboard'); 
       return;
     }
     setIsLoading(true);
@@ -266,11 +249,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-
   return (
     <AuthContext.Provider value={{ user, firebaseUser, isLoading, login, signup, logout, updateUserProfile, resendVerificationEmail }}>
       {children}
     </AuthContext.Provider>
   );
 };
-
