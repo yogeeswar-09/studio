@@ -47,10 +47,13 @@ export function SignupForm() {
   const onSubmit = async (data: SignupFormValues) => {
     setFormError(null);
     setIsSubmitting(true);
+    let caughtError: any = null; // Define error variable in the broader scope
+
     try {
       await signup(data.name, data.email, data.password, data.year, data.branch);
       // Toast and navigation are handled by AuthContext or the signup function itself
     } catch (error: any) {
+      caughtError = error; // Assign caught error to the outer scope variable
       let errorMessage = "An unexpected error occurred. Please try again.";
       if (error instanceof FirebaseError) {
         switch (error.code) {
@@ -70,7 +73,7 @@ export function SignupForm() {
                 variant: "destructive",
                 duration: 7000,
             });
-            setIsSubmitting(false);
+            setIsSubmitting(false); // Set isSubmitting for this specific error before returning
             return; // Prevent further processing for this specific error
           case 'auth/invalid-email':
             errorMessage = "Invalid email format.";
@@ -92,7 +95,11 @@ export function SignupForm() {
       });
     } finally {
       // Only set to false if not already handled by the early return for 'auth/email-already-in-use'
-      if (error?.code !== 'auth/email-already-in-use') {
+      // Now 'caughtError' is accessible here.
+      // If 'auth/email-already-in-use' occurred, its catch block already set isSubmitting to false and returned.
+      // The condition below (caughtError?.code !== 'auth/email-already-in-use') will be false, so it won't be set again.
+      // For success (caughtError is null) or other errors, the condition will be true, and isSubmitting will be set to false.
+      if (caughtError?.code !== 'auth/email-already-in-use') {
         setIsSubmitting(false);
       }
     }
@@ -126,8 +133,8 @@ export function SignupForm() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="year">Year</Label>
-              <Select 
-                onValueChange={(value) => form.setValue('year', value as UserYear)} 
+              <Select
+                onValueChange={(value) => form.setValue('year', value as UserYear)}
                 defaultValue={form.getValues('year')}
                 disabled={isLoading}
               >
@@ -147,8 +154,8 @@ export function SignupForm() {
 
             <div className="space-y-2">
               <Label htmlFor="branch">Branch</Label>
-               <Select 
-                onValueChange={(value) => form.setValue('branch', value as UserBranch)} 
+               <Select
+                onValueChange={(value) => form.setValue('branch', value as UserBranch)}
                 defaultValue={form.getValues('branch')}
                 disabled={isLoading}
               >
