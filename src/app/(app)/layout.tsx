@@ -1,3 +1,6 @@
+
+"use client"; // Add this directive
+
 import { Header } from "@/components/common/Header";
 import { SidebarNav } from "@/components/common/SidebarNav";
 import { AppLogo } from "@/components/common/AppLogo";
@@ -13,7 +16,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Settings, LogOut } from "lucide-react";
+import { Settings, LogOut, ShoppingBag as ShoppingBagIconLucide } from "lucide-react"; // Renamed to avoid conflict
 import Link from "next/link";
 import React from "react";
 
@@ -87,16 +90,15 @@ export default function AppLayout({
 // A smaller logo for collapsed sidebar
 const ShoppingBagLogoShort = () => (
   <Link href="/" className="flex items-center justify-center">
-    <ShoppingBag className="h-6 w-6 text-primary" />
+    <ShoppingBagIconLucide className="h-6 w-6 text-primary" /> {/* Changed to use imported Lucide icon */}
   </Link>
 );
 
 // Placeholder for ShoppingBag icon if not available, adjust as needed
-const ShoppingBag = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-    <line x1="3" y1="6" x2="21" y2="6"></line>
-    <path d="M16 10a4 4 0 0 1-8 0"></path>
-  </svg>
-);
-
+// Removed the inline SVG ShoppingBag component as we can use the Lucide one.
+// Ensure ShoppingBag from lucide-react is imported if it wasn't already.
+// If there was a specific reason for the custom SVG, it can be re-added, but it's good practice to use icons from a library if available.
+// For now, I'm assuming the Lucide icon `ShoppingBagIconLucide` is sufficient.
+// If `ShoppingBag` was meant to be a distinct custom icon, that code would need to be preserved or clarified.
+// Based on the usage, it looks like a general shopping bag icon, which Lucide provides.
+// I've also updated the import from `lucide-react` to `ShoppingBag as ShoppingBagIconLucide` to avoid naming conflicts if any other `ShoppingBag` component existed.
