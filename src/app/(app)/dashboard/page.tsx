@@ -1,20 +1,23 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
-import { mockListings } from "@/lib/mock-data";
 import type { Listing } from "@/types";
-import { ArrowRight, PlusCircle, Search } from "lucide-react";
+import { ArrowRight, PlusCircle, Search, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
+import { collection, query, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Simplified ItemCard for dashboard
 const ItemCardMini = ({ item }: { item: Listing }) => (
   <Link href={`/listings/${item.id}`} className="block group">
-    <Card className="overflow-hidden h-full flex flex-col transition-all duration-300 ease-in-out hover:shadow-xl hover:border-primary">
-      <div className="aspect-video overflow-hidden relative">
+    <Card className="overflow-hidden h-full flex flex-col transition-all duration-300 ease-in-out hover:shadow-xl hover:border-primary bg-card">
+      <div className="aspect-video overflow-hidden relative bg-muted">
         <Image
           src={item.imageUrl}
           alt={item.title}
@@ -24,9 +27,9 @@ const ItemCardMini = ({ item }: { item: Listing }) => (
           data-ai-hint={`${item.category.toLowerCase()} item`}
         />
       </div>
-      <CardHeader className="p-4">
-        <CardTitle className="text-base font-semibold leading-tight truncate group-hover:text-primary">{item.title}</CardTitle>
-        <CardDescription className="text-sm text-primary font-bold mt-1">
+      <CardHeader className="p-3">
+        <CardTitle className="text-sm font-semibold leading-tight truncate group-hover:text-primary">{item.title}</CardTitle>
+        <CardDescription className="text-md text-primary font-bold mt-0.5">
           ${item.price.toFixed(2)}
         </CardDescription>
       </CardHeader>
@@ -34,14 +37,44 @@ const ItemCardMini = ({ item }: { item: Listing }) => (
   </Link>
 );
 
+const ItemCardMiniSkeleton = () => (
+  <Card className="overflow-hidden h-full flex flex-col">
+    <Skeleton className="aspect-video w-full bg-muted/70" />
+    <CardHeader className="p-3">
+      <Skeleton className="h-4 w-3/4 mb-1 bg-muted/70" />
+      <Skeleton className="h-5 w-1/2 bg-muted/70" />
+    </CardHeader>
+  </Card>
+);
+
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [featuredItems, setFeaturedItems] = useState<Listing[]>([]);
+  const [isLoadingItems, setIsLoadingItems] = useState(true);
 
   useEffect(() => {
-    // Simulate fetching featured items
-    setFeaturedItems(mockListings.slice(0, 4)); // Show first 4 items as featured
+    const fetchFeaturedItems = async () => {
+      setIsLoadingItems(true);
+      try {
+        const listingsRef = collection(db, "listings");
+        // Fetch recent, available items. Could add more criteria like "isFeatured" field if needed.
+        const q = query(listingsRef, where("status", "==", "available"), orderBy("createdAt", "desc"), limit(4));
+        const querySnapshot = await getDocs(q);
+        const items = querySnapshot.docs.map(doc => ({ 
+            id: doc.id, 
+            ...doc.data(),
+            createdAt: (doc.data().createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+           }) as Listing);
+        setFeaturedItems(items);
+      } catch (error) {
+        console.error("Error fetching featured items:", error);
+        // Optionally set an error state and display a message
+      } finally {
+        setIsLoadingItems(false);
+      }
+    };
+    fetchFeaturedItems();
   }, []);
 
   return (
@@ -53,7 +86,7 @@ export default function DashboardPage() {
 
       <div className="grid md:grid-cols-2 gap-8 mb-12">
         <Link href="/browse" className="block">
-          <Card className="hover:shadow-lg transition-shadow p-6 flex items-center gap-4 bg-background hover:border-primary">
+          <Card className="hover:shadow-lg transition-shadow p-6 flex items-center gap-4 bg-card hover:border-primary">
             <Search className="w-12 h-12 text-primary" />
             <div>
               <h2 className="text-2xl font-semibold text-foreground">Browse Items</h2>
@@ -63,7 +96,7 @@ export default function DashboardPage() {
           </Card>
         </Link>
         <Link href="/create-listing" className="block">
-          <Card className="hover:shadow-lg transition-shadow p-6 flex items-center gap-4 bg-background hover:border-primary">
+          <Card className="hover:shadow-lg transition-shadow p-6 flex items-center gap-4 bg-card hover:border-primary">
             <PlusCircle className="w-12 h-12 text-accent" />
             <div>
               <h2 className="text-2xl font-semibold text-foreground">Sell an Item</h2>
@@ -76,14 +109,18 @@ export default function DashboardPage() {
 
       <div>
         <h2 className="text-3xl font-semibold text-foreground mb-6">Featured Items</h2>
-        {featuredItems.length > 0 ? (
+        {isLoadingItems ? (
+           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => <ItemCardMiniSkeleton key={i} />)}
+          </div>
+        ) : featuredItems.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {featuredItems.map((item) => (
               <ItemCardMini key={item.id} item={item} />
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground">No featured items at the moment. Check back later!</p>
+          <p className="text-muted-foreground py-8 text-center">No featured items at the moment. Check back later!</p>
         )}
       </div>
     </div>

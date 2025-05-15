@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -17,20 +18,24 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Loader2, UploadCloud } from 'lucide-react';
 import Image from 'next/image';
-import { useState, ChangeEvent } from 'react';
+import { useState, ChangeEvent, useEffect } from 'react';
+import { db, storage } from '@/lib/firebase';
+import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 const listingSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters.").max(100, "Title too long."),
   description: z.string().min(20, "Description must be at least 20 characters.").max(1000, "Description too long."),
   price: z.coerce.number().positive("Price must be a positive number."),
   category: z.enum(mockCategories, { required_error: "Category is required." }),
-  imageUrl: z.string().url("Must be a valid image URL.").optional().or(z.literal('')), // For now, treat as optional or allow empty for file upload case
+  imageUrl: z.string().url("Image URL is required if not uploading a file.").optional().or(z.literal('')),
+  // imageFile is not part of schema, handled separately
 });
 
 type ListingFormValues = z.infer<typeof listingSchema>;
 
 interface ListingFormProps {
-  listing?: Listing; // For editing existing listing
+  listing?: Listing; // For editing existing listing, fetched from Firestore
   onSubmitSuccess?: (listingId: string) => void;
 }
 
@@ -39,20 +44,12 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(listing?.imageUrl || null);
-  // In a real app, you'd use a state for the actual File object:
-  // const [imageFile, setImageFile] = useState<File | null>(null);
-
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const form = useForm<ListingFormValues>({
     resolver: zodResolver(listingSchema),
-    defaultValues: listing ? {
-      title: listing.title,
-      description: listing.description,
-      price: listing.price,
-      category: listing.category,
-      imageUrl: listing.imageUrl || '',
-    } : {
+    defaultValues: {
       title: '',
       description: '',
       price: 0,
@@ -61,55 +58,130 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
     },
   });
 
+  useEffect(() => {
+    if (listing) {
+      form.reset({
+        title: listing.title,
+        description: listing.description,
+        price: listing.price,
+        category: listing.category,
+        imageUrl: listing.imageUrl || '',
+      });
+      setImagePreview(listing.imageUrl || null);
+      setImageFile(null); // Clear any previous file selection
+    } else {
+      form.reset({ // Reset to default for new listing
+        title: '',
+        description: '',
+        price: 0,
+        category: undefined,
+        imageUrl: '',
+      });
+      setImagePreview(null);
+      setImageFile(null);
+    }
+  }, [listing, form]);
+
   const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // setImageFile(file); // Store the file object
+      setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
-        // For now, we will put a placeholder URL if a file is selected.
-        // In a real app, you'd upload this file and get back a URL.
-        form.setValue('imageUrl', 'https://placehold.co/600x400.png'); 
       };
       reader.readAsDataURL(file);
+      form.setValue('imageUrl', ''); // Clear URL if file is selected
     }
   };
+  
+  const handlePastedUrl = (url: string) => {
+    form.setValue('imageUrl', url);
+    setImagePreview(url);
+    setImageFile(null); // Clear file if URL is pasted
+  }
 
   const onSubmit = async (data: ListingFormValues) => {
     if (!user) {
-      toast({ title: "Authentication Error", description: "You must be logged in to create a listing.", variant: "destructive" });
+      toast({ title: "Authentication Error", description: "You must be logged in.", variant: "destructive" });
       return;
     }
+    if (!imageFile && !data.imageUrl) {
+        form.setError("imageUrl", { type: "manual", message: "Please upload an image or provide an image URL."});
+        toast({ title: "Image Required", description: "Please upload an image or provide an image URL for your listing.", variant: "destructive" });
+        return;
+    }
+
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      let finalImageUrl = data.imageUrl;
+      let imageStoragePath: string | undefined = listing?.imageStoragePath;
 
-    const newOrUpdatedListingId = listing ? listing.id : `listing${Date.now()}`;
-    const submissionData = {
-      ...data,
-      id: newOrUpdatedListingId,
-      sellerId: user.id,
-      createdAt: new Date().toISOString(),
-      // If imageFile exists, imageUrl would come from uploading it.
-      // For this mock, we use the value from the form (either pasted URL or placeholder from "upload")
-      imageUrl: data.imageUrl || 'https://placehold.co/600x400.png', // Ensure there's a fallback
-    };
-    
-    console.log("Submitting listing:", submissionData);
-    // In a real app: save to DB, mockListings.push(newListing) or update existing.
+      if (imageFile) {
+        // If editing and there's an old image, delete it first
+        if (listing && listing.imageStoragePath) {
+          try {
+            const oldImageRef = ref(storage, listing.imageStoragePath);
+            await deleteObject(oldImageRef);
+          } catch (error) {
+            console.warn("Could not delete old image, it might not exist or an error occurred:", error);
+            // Non-fatal, proceed with uploading new image
+          }
+        }
+        const newImageStoragePath = `listings/${user.uid}/${Date.now()}_${imageFile.name}`;
+        const imageRef = ref(storage, newImageStoragePath);
+        await uploadBytes(imageRef, imageFile);
+        finalImageUrl = await getDownloadURL(imageRef);
+        imageStoragePath = newImageStoragePath;
+      } else if (data.imageUrl && listing && data.imageUrl !== listing.imageUrl && listing.imageStoragePath) {
+        // URL changed from a storage path to a new pasted URL, delete old storage image
+         try {
+            const oldImageRef = ref(storage, listing.imageStoragePath);
+            await deleteObject(oldImageRef);
+            imageStoragePath = undefined; // New URL is not from our storage
+          } catch (error) {
+            console.warn("Could not delete old image when switching to new URL:", error);
+          }
+      }
 
-    setIsLoading(false);
-    toast({
-      title: listing ? "Listing Updated!" : "Listing Created!",
-      description: `Your item "${data.title}" has been ${listing ? 'updated' : 'listed'}.`,
-    });
 
-    if (onSubmitSuccess) {
-      onSubmitSuccess(newOrUpdatedListingId);
-    } else {
-      router.push(`/listings/${newOrUpdatedListingId}`);
+      const listingData: Omit<Listing, 'id' | 'seller' | 'createdAt' | 'updatedAt'> & { createdAt?: any, updatedAt?: any } = {
+        title: data.title,
+        description: data.description,
+        price: data.price,
+        category: data.category,
+        imageUrl: finalImageUrl!,
+        imageStoragePath: imageStoragePath,
+        sellerId: user.uid,
+        status: 'available',
+      };
+
+      let listingId = listing?.id;
+
+      if (listing) { // Editing existing listing
+        listingData.updatedAt = serverTimestamp();
+        const listingRef = doc(db, "listings", listing.id);
+        await updateDoc(listingRef, listingData);
+        toast({ title: "Listing Updated!", description: `"${data.title}" has been updated.` });
+      } else { // Creating new listing
+        listingData.createdAt = serverTimestamp();
+        listingData.updatedAt = serverTimestamp();
+        const docRef = await addDoc(collection(db, "listings"), listingData);
+        listingId = docRef.id;
+        toast({ title: "Listing Created!", description: `"${data.title}" has been listed.` });
+      }
+
+      setIsLoading(false);
+      if (onSubmitSuccess) {
+        onSubmitSuccess(listingId!);
+      } else {
+        router.push(`/listings/${listingId}`);
+      }
+    } catch (error: any) {
+      setIsLoading(false);
+      console.error("Error submitting listing:", error);
+      toast({ title: "Submission Failed", description: error.message || "Could not save the listing.", variant: "destructive" });
     }
   };
 
@@ -129,7 +201,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                 <FormItem>
                   <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Slightly used Python textbook" {...field} />
+                    <Input placeholder="e.g., Slightly used Python textbook" {...field} disabled={isLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -143,7 +215,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Describe your item in detail..." {...field} rows={5} />
+                    <Textarea placeholder="Describe your item in detail..." {...field} rows={5} disabled={isLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -158,7 +230,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                   <FormItem>
                     <FormLabel>Price ($)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="e.g., 25.99" {...field} />
+                      <Input type="number" step="0.01" placeholder="e.g., 25.99" {...field} disabled={isLoading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -171,7 +243,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} disabled={isLoading}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a category" />
@@ -189,52 +261,54 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
               />
             </div>
             
-            <FormField
-              control={form.control}
-              name="imageUrl" 
-              render={({ field }) => ( // field includes onChange, onBlur, value, name, ref
-                <FormItem>
-                  <FormLabel>Image</FormLabel>
-                  <FormControl>
-                    <div>
-                      <Label 
-                        htmlFor="image-upload"
-                        className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted/75 transition-colors"
-                      >
-                        {imagePreview ? (
-                           <Image src={imagePreview} alt="Preview" width={180} height={180} className="object-contain max-h-44 rounded-md" data-ai-hint="uploaded item"/>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                            <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
-                            <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                            <p className="text-xs text-muted-foreground">SVG, PNG, JPG or GIF (MAX. 800x400px)</p>
-                          </div>
+            <FormItem>
+                <FormLabel>Image</FormLabel>
+                <FormControl>
+                <div>
+                    <Label 
+                    htmlFor="image-upload"
+                    className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted/75 transition-colors"
+                    >
+                    {imagePreview ? (
+                        <Image src={imagePreview} alt="Preview" width={180} height={180} className="object-contain max-h-44 rounded-md" data-ai-hint="uploaded item"/>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
+                        <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                        <p className="text-xs text-muted-foreground">PNG, JPG, GIF (MAX. 5MB)</p>
+                        </div>
+                    )}
+                    <Input 
+                        id="image-upload" 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={isLoading}
+                    />
+                    </Label>
+                    <FormField
+                        control={form.control}
+                        name="imageUrl"
+                        render={({ field }) => (
+                            <Input 
+                                type="text" 
+                                placeholder="Or paste image URL here" 
+                                className="mt-2"
+                                value={field.value || ''}
+                                onChange={(e) => {
+                                  field.onChange(e.target.value);
+                                  handlePastedUrl(e.target.value);
+                                }}
+                                disabled={isLoading || !!imageFile} // Disable if a file is chosen
+                            />
                         )}
-                        <Input 
-                          id="image-upload" 
-                          type="file" 
-                          className="hidden" 
-                          accept="image/*"
-                          onChange={handleImageUpload} // Use custom handler
-                        />
-                      </Label>
-                       <Input 
-                          type="text" 
-                          placeholder="Or paste image URL here" 
-                          className="mt-2"
-                          value={field.value || ''} // Control this input with RHF
-                          onChange={(e) => {
-                            field.onChange(e.target.value); // Update RHF state
-                            setImagePreview(e.target.value); // Update preview
-                          }}
-                        />
-                    </div>
-                  </FormControl>
-                  <FormDescription>Upload an image or provide a URL for your item.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    />
+                </div>
+                </FormControl>
+                <FormDescription>Upload an image or provide a URL for your item. Uploaded images take precedence.</FormDescription>
+                <FormMessage>{form.formState.errors.imageUrl?.message}</FormMessage>
+            </FormItem>
 
             <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-lg py-3" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}

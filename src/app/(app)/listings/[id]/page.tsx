@@ -1,18 +1,21 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { Listing, User } from '@/types';
-import { mockListings, mockUsers } from '@/lib/mock-data';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, MessageCircle, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Edit3, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
+import { doc, getDoc, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { formatDistanceToNow } from 'date-fns';
 
 export default function ListingDetailPage() {
   const params = useParams();
@@ -25,50 +28,77 @@ export default function ListingDetailPage() {
   const id = params.id as string;
 
   useEffect(() => {
-    if (id) {
-      setIsLoading(true);
-      // Simulate API call
-      setTimeout(() => {
-        const foundListing = mockListings.find(item => item.id === id);
-        if (foundListing) {
-          setListing(foundListing);
-          const foundSeller = mockUsers.find(user => user.id === foundListing.sellerId);
-          setSeller(foundSeller || null);
-        } else {
-          // Handle not found, maybe redirect or show error
-          router.push('/browse'); 
+    const fetchListingAndSeller = async () => {
+      if (id) {
+        setIsLoading(true);
+        try {
+          const listingRef = doc(db, "listings", id);
+          const listingSnap = await getDoc(listingRef);
+
+          if (listingSnap.exists()) {
+            const fetchedListingData = listingSnap.data();
+            const fetchedListing = {
+              id: listingSnap.id,
+              ...fetchedListingData,
+              createdAt: (fetchedListingData.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+              updatedAt: (fetchedListingData.updatedAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+            } as Listing;
+            setListing(fetchedListing);
+
+            if (fetchedListing.sellerId) {
+              const sellerRef = doc(db, "users", fetchedListing.sellerId);
+              const sellerSnap = await getDoc(sellerRef);
+              if (sellerSnap.exists()) {
+                setSeller({ uid: sellerSnap.id, ...sellerSnap.data() } as User);
+              } else {
+                console.warn("Seller not found for ID:", fetchedListing.sellerId);
+                setSeller(null);
+              }
+            }
+          } else {
+            console.log("No such listing document!");
+            setListing(null); // Or router.push('/404')
+            router.push('/browse?error=notfound');
+          }
+        } catch (error) {
+          console.error("Error fetching listing details:", error);
+          setListing(null); // Or show error state
+        } finally {
+          setIsLoading(false);
         }
-        setIsLoading(false);
-      }, 500);
-    }
+      }
+    };
+
+    fetchListingAndSeller();
   }, [id, router]);
 
   if (isLoading) {
     return (
       <div className="container mx-auto py-8 px-4">
-        <Button variant="ghost" onClick={() => router.back()} className="mb-6">
+        <Button variant="ghost" disabled className="mb-6">
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
-        <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-          <div>
+        <div className="grid md:grid-cols-5 gap-8 lg:gap-12">
+          <div className="md:col-span-3">
             <Skeleton className="w-full aspect-video rounded-lg" />
             <div className="mt-4 grid grid-cols-4 gap-2">
               {[...Array(4)].map((_, i) => <Skeleton key={i} className="w-full aspect-square rounded" />)}
             </div>
           </div>
-          <div className="space-y-6">
+          <div className="md:col-span-2 space-y-6">
             <Skeleton className="h-10 w-3/4" />
             <Skeleton className="h-8 w-1/4" />
+            <Skeleton className="h-5 w-20" />
             <Skeleton className="h-5 w-1/2" />
             <Skeleton className="h-24 w-full" />
-            <div className="flex items-center space-x-4 border-t pt-6">
+            <div className="flex items-center space-x-4 border-t pt-6 mt-6">
               <Skeleton className="h-12 w-12 rounded-full" />
               <div className="space-y-2">
                 <Skeleton className="h-5 w-32" />
                 <Skeleton className="h-4 w-24" />
               </div>
             </div>
-            <div className="flex gap-4">
+            <div className="flex gap-4 mt-6">
               <Skeleton className="h-12 w-1/2" />
               <Skeleton className="h-12 w-1/2" />
             </div>
@@ -79,7 +109,14 @@ export default function ListingDetailPage() {
   }
 
   if (!listing) {
-    return <div className="container mx-auto py-8 text-center">Listing not found.</div>;
+    return (
+      <div className="container mx-auto py-8 text-center">
+        <Frown className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
+        <h3 className="text-xl font-semibold text-foreground mb-2">Listing not found</h3>
+        <p className="text-muted-foreground">This item may have been removed or the link is incorrect.</p>
+        <Button onClick={() => router.push('/browse')} className="mt-6">Browse Other Items</Button>
+      </div>
+    );
   }
 
   const getSellerInitials = (name: string | undefined) => {
@@ -88,11 +125,13 @@ export default function ListingDetailPage() {
     if (names.length === 1) return names[0].substring(0, 2).toUpperCase();
     return names[0][0].toUpperCase() + names[names.length - 1][0].toUpperCase();
   };
+  
+  const timeAgo = listing.createdAt ? formatDistanceToNow(new Date(listing.createdAt), { addSuffix: true }) : 'unknown';
 
   return (
     <div className="container mx-auto py-8 px-4">
       <Button variant="ghost" onClick={() => router.back()} className="mb-6 text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Listings
+        <ArrowLeft className="mr-2 h-4 w-4" /> Back
       </Button>
       <div className="grid md:grid-cols-5 gap-8 lg:gap-12">
         {/* Image Gallery Section */}
@@ -108,19 +147,19 @@ export default function ListingDetailPage() {
               data-ai-hint={`${listing.category.toLowerCase()} detail view`}
             />
           </div>
-          {/* Placeholder for more images */}
-          <div className="grid grid-cols-4 gap-2">
+          {/* Placeholder for more images if you implement a gallery */}
+          {/* <div className="grid grid-cols-4 gap-2">
             {[listing.imageUrl, "https://placehold.co/100x100.png", "https://placehold.co/100x100.png", "https://placehold.co/100x100.png"].map((img, i) => (
               <div key={i} className={`relative aspect-square rounded overflow-hidden border-2 ${i === 0 ? 'border-primary' : 'border-transparent'}`}>
                 <Image src={img} alt={`Thumbnail ${i+1}`} fill className="object-cover cursor-pointer hover:opacity-80 transition-opacity" data-ai-hint="product thumbnail"/>
               </div>
             ))}
-          </div>
+          </div> */}
         </div>
 
         {/* Details Section */}
         <div className="md:col-span-2">
-          <Card className="shadow-lg">
+          <Card className="shadow-xl">
             <CardHeader>
               <div className="flex justify-between items-start">
                 <CardTitle className="text-3xl font-bold text-foreground">{listing.title}</CardTitle>
@@ -129,6 +168,10 @@ export default function ListingDetailPage() {
               <CardDescription className="text-3xl font-extrabold text-primary mt-2">
                 ${listing.price.toFixed(2)}
               </CardDescription>
+              <p className="text-xs text-muted-foreground mt-1">Listed {timeAgo}</p>
+               {listing.status === 'sold' && (
+                <Badge variant="destructive" className="mt-2 text-base px-3 py-1">SOLD</Badge>
+              )}
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground leading-relaxed mb-6">{listing.description}</p>
@@ -150,23 +193,23 @@ export default function ListingDetailPage() {
               )}
 
               <div className="mt-8 flex flex-col gap-3">
-                {currentUser?.id !== seller?.id ? (
+                {currentUser?.uid === seller?.uid ? (
+                  <Link href={`/profile?editListing=${listing.id}`} passHref legacyBehavior>
+                    <Button size="lg" variant="outline" className="w-full text-base border-primary text-primary hover:bg-primary/10">
+                       <Edit3 className="mr-2 h-5 w-5" /> Edit Your Listing
+                    </Button>
+                  </Link>
+                ) : listing.status !== 'sold' ? (
                   <>
                     <Link href={`/chat?newChatWith=${listing.sellerId}&itemId=${listing.id}`} passHref legacyBehavior>
                       <Button size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-base">
                         <MessageCircle className="mr-2 h-5 w-5" /> Chat with Seller
                       </Button>
                     </Link>
-                    {/* <Button size="lg" variant="outline" className="w-full text-base">
-                      <ShoppingCart className="mr-2 h-5 w-5" /> Add to Cart (Future)
-                    </Button> */}
+                    {/* Add to cart/buy now can be future features */}
                   </>
                 ) : (
-                  <Link href={`/profile?editListing=${listing.id}`} passHref legacyBehavior>
-                    <Button size="lg" variant="outline" className="w-full text-base">
-                       Edit Your Listing
-                    </Button>
-                  </Link>
+                   <p className="text-center text-muted-foreground font-semibold">This item has been sold.</p>
                 )}
               </div>
             </CardContent>

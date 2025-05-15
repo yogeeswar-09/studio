@@ -21,10 +21,12 @@ export type Listing = {
   price: number;
   category: ListingCategory;
   imageUrl: string;
+  imageStoragePath?: string; // To help with deleting from Firebase Storage
   sellerId: string; // User uid
-  seller?: User; // Populated
+  seller?: User; // Populated client-side
   createdAt: Timestamp | string; // Firestore Timestamp or ISO date string
-  isSold?: boolean;
+  updatedAt?: Timestamp | string; // Firestore Timestamp or ISO date string
+  status?: 'available' | 'sold'; // Status of the listing
 };
 
 export type ChatMessage = {
