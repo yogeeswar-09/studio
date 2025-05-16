@@ -4,8 +4,8 @@ import type { Timestamp } from 'firebase/firestore';
 export type UserYear = '1st Year' | '2nd Year' | '3rd Year' | '4th Year';
 export const userYears: UserYear[] = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
 
-export type UserBranch = 'CSE' | 'ECE' | 'EEE' | 'MECH' | 'CIVIL' | 'IT' | 'AIML' | 'DS' | 'CSBS' | 'Other';
-export const userBranches: UserBranch[] = ['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT', 'AIML', 'DS', 'CSBS', 'Other'];
+export type UserBranch = 'CSE' | 'ECE' | 'EEE' | 'MECH' | 'CIVIL' | 'IT' | 'AIML' | 'DS' | 'CSBS' | 'AERO' | 'Other';
+export const userBranches: UserBranch[] = ['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT', 'AIML', 'DS', 'CSBS', 'AERO', 'Other'];
 
 export type User = {
   uid: string; // Firebase Auth User ID

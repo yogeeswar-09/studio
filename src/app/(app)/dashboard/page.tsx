@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 // Simplified ItemCard for dashboard
 const ItemCardMini = ({ item }: { item: Listing }) => (
   <Link href={`/listings/${item.id}`} className="block group">
-    <Card className="overflow-hidden h-full flex flex-col transition-all duration-300 ease-in-out hover:shadow-xl hover:border-primary bg-card">
+    <Card className="overflow-hidden h-full flex flex-col transition-all duration-300 ease-in-out hover:shadow-xl hover:border-primary bg-card group-hover:animate-pulsing-glow-border">
       <div className="aspect-video overflow-hidden relative bg-muted">
         <Image
           src={item.imageUrl}
@@ -97,7 +97,7 @@ export default function DashboardPage() {
           </Card>
         </Link> */}
         <Link href="/create-listing" className="block">
-          <Card className="hover:shadow-lg transition-shadow p-6 flex items-center gap-4 bg-card hover:border-primary">
+          <Card className="hover:shadow-lg transition-shadow p-6 flex items-center gap-4 bg-card hover:border-primary group"> {/* Added group here */}
             <PlusCircle className="w-12 h-12 text-accent" />
             <div>
               <h2 className="text-2xl font-semibold text-foreground">Sell an Item</h2>
