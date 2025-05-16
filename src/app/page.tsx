@@ -22,24 +22,28 @@ export default function LandingPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-background text-center p-6">
-        <div className="mb-8">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-background text-center p-6 overflow-hidden">
+        <div className="mb-8 animate-logo-pulse">
           <AppLogo iconSize={60} textSize="text-5xl" />
         </div>
         <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-        <p className="text-md font-semibold text-muted-foreground">Initializing CampusKart...</p>
+        <p className="text-lg font-semibold text-muted-foreground animate-text-focus-in">
+          Initializing CampusKart...
+        </p>
       </div>
     );
   }
 
   if (user) { // Should be handled by useEffect redirect, but as a fallback display a consistent loading screen
     return (
-       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-background text-center p-6">
-        <div className="mb-8">
+       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-background text-center p-6 overflow-hidden">
+        <div className="mb-8 animate-logo-pulse">
           <AppLogo iconSize={60} textSize="text-5xl" />
         </div>
         <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-        <p className="text-md font-semibold text-muted-foreground">Redirecting to dashboard...</p>
+        <p className="text-lg font-semibold text-muted-foreground animate-text-focus-in">
+          Redirecting to dashboard...
+        </p>
       </div>
     );
   }
@@ -71,7 +75,6 @@ export default function LandingPage() {
             </Link>
           </div>
         </div>
-        {/* Removed the placeholder image section */}
       </main>
       <footer className="text-center p-6 border-t">
         <p className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} CampusKart. All rights reserved.</p>

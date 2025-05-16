@@ -82,11 +82,27 @@ export default {
   				to: {
   					height: '0'
   				}
-  			}
+  			},
+        'logo-pulse': {
+          '0%, 100%': { transform: 'scale(1)', opacity: '0.95' },
+          '50%': { transform: 'scale(1.03)', opacity: '1' },
+        },
+        'text-focus-in': {
+          '0%': {
+            filter: 'blur(12px)',
+            opacity: '0',
+          },
+          '100%': {
+            filter: 'blur(0px)',
+            opacity: '1',
+          },
+        },
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+        'logo-pulse': 'logo-pulse 2.5s ease-in-out infinite',
+        'text-focus-in': 'text-focus-in 0.8s cubic-bezier(0.550, 0.085, 0.680, 0.530) 0.2s both', // Added delay
   		}
   	}
   },
