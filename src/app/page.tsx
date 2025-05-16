@@ -101,6 +101,7 @@ export default function LandingPage() {
       </main>
       <footer className="text-center p-6 border-t bg-background/80">
         <p className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} CampusKart. All rights reserved.</p>
+        <p className="text-xs text-muted-foreground mt-1">Created by Team - Code Crafters, from CSM - B</p>
       </footer>
     </div>
   );
