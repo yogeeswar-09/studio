@@ -84,8 +84,9 @@ export default function DashboardPage() {
         <p className="text-lg opacity-90">Ready to find your next great deal or list something new?</p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8 mb-12">
-        <Link href="/browse" className="block">
+      <div className="grid md:grid-cols-1 gap-8 mb-12"> {/* Changed to md:grid-cols-1 as browse is removed */}
+        {/* Removed Browse Items Card */}
+        {/* <Link href="/browse" className="block">
           <Card className="hover:shadow-lg transition-shadow p-6 flex items-center gap-4 bg-card hover:border-primary">
             <Search className="w-12 h-12 text-primary" />
             <div>
@@ -94,7 +95,7 @@ export default function DashboardPage() {
             </div>
             <ArrowRight className="w-6 h-6 text-muted-foreground ml-auto" />
           </Card>
-        </Link>
+        </Link> */}
         <Link href="/create-listing" className="block">
           <Card className="hover:shadow-lg transition-shadow p-6 flex items-center gap-4 bg-card hover:border-primary">
             <PlusCircle className="w-12 h-12 text-accent" />
