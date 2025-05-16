@@ -124,15 +124,8 @@ function ChatPageContent() {
         }
 
         // Check for existing conversation
-        // For a more scalable solution, consider querying for exact participantUids match if listingId is not a factor,
-        // or participantUids + listingId if it is.
-        // Example: where("participantUids", "==", [currentUser.uid, newChatWithUserId].sort())
-        // This requires participantUids to always be stored sorted.
         const existingQueryConstraints = [
             where("participantUids", "array-contains", currentUser.uid),
-            // Potentially add where("participantUids", "array-contains", newChatWithUserId) if supported and performant
-            // Or where("participantUids", "==", [currentUser.uid, newChatWithUserId].sort()) if you store sorted.
-            // For now, filtering client-side after fetching conversations involving current user.
         ];
         if (itemId) {
              existingQueryConstraints.push(where("listingId", "==", itemId));
@@ -144,13 +137,11 @@ function ChatPageContent() {
         let foundConversation: ChatConversation | null = null;
         existingSnapshot.forEach(doc => {
             const data = doc.data();
-            // Ensure both participants are in the conversation
             const uids = data.participantUids as string[];
             if (uids.includes(newChatWithUserId) && uids.includes(currentUser.uid)) {
-                 // If itemId is present, ensure it matches. If no itemId, then any chat between these users.
                 if (itemId && data.listingId === itemId) {
                      foundConversation = {id: doc.id, ...data} as ChatConversation;
-                } else if (!itemId) { // If no specific item, first chat found between users
+                } else if (!itemId && !data.listingId) { // Check for general chat if no itemId and listingId is also null/undefined
                      foundConversation = {id: doc.id, ...data} as ChatConversation;
                 }
             }
@@ -160,12 +151,11 @@ function ChatPageContent() {
         if (foundConversation) {
           setSelectedChatId(foundConversation.id);
         } else {
-          // Create a new conversation
           const otherUser = await fetchUserDetails(newChatWithUserId);
           if (otherUser) {
             const newConvoData = {
-              participantUids: [currentUser.uid, newChatWithUserId].sort(), // Store sorted UIDs for easier querying
-              participants: [], // Will be populated on fetch by ChatList/ChatItem
+              participantUids: [currentUser.uid, newChatWithUserId].sort(),
+              participants: [], 
               listingId: itemId || null,
               lastMessage: null,
               unreadCount: { [currentUser.uid]: 0, [newChatWithUserId]: 0 },
@@ -175,7 +165,7 @@ function ChatPageContent() {
             try {
               const docRef = await addDoc(collection(db, "conversations"), newConvoData);
               setSelectedChatId(docRef.id);
-              setMessages([]); // New chat has no messages
+              setMessages([]); 
             } catch (error) {
               console.error("Error creating new conversation:", error);
               toast({ title: "Error", description: "Could not start new chat.", variant: "destructive" });
@@ -184,10 +174,14 @@ function ChatPageContent() {
              toast({ title: "Error", description: "Could not find user to chat with.", variant: "destructive" });
           }
         }
-        // Clean up URL params after handling
         const currentUrl = new URL(window.location.toString());
         currentUrl.searchParams.delete('newChatWith');
         currentUrl.searchParams.delete('itemId');
+        if (foundConversation) {
+          currentUrl.searchParams.set('chatId', foundConversation.id);
+        } else if (selectedChatId) { // This branch might be tricky if new convo failed. Revisit.
+           currentUrl.searchParams.set('chatId', selectedChatId);
+        }
         router.replace(currentUrl.toString());
       }
     };
@@ -198,14 +192,14 @@ function ChatPageContent() {
         const convoExists = conversations.find(c => c.id === chatIdFromUrl);
         if (convoExists) setSelectedChatId(chatIdFromUrl);
         else if (conversations.length > 0 && !isLoadingConversations) setSelectedChatId(conversations[0].id);
-    } else if (conversations.length > 0 && !isLoadingConversations) {
-      setSelectedChatId(conversations[0].id); // Default to first chat if no specific chat is targeted
+    } else if (conversations.length > 0 && !isLoadingConversations && !selectedChatId) {
+      setSelectedChatId(conversations[0].id); 
     }
 
-  }, [currentUser, conversations, searchParams, router, toast, isLoadingConversations]);
+  }, [currentUser, conversations, searchParams, router, toast, isLoadingConversations, selectedChatId]); // Added selectedChatId
 
 
-  // Effect to fetch messages for the selected chat
+  // Effect to fetch messages for the selected chat and mark as read
   useEffect(() => {
     if (!selectedChatId) {
       setMessages([]);
@@ -218,26 +212,44 @@ function ChatPageContent() {
       orderBy("timestamp", "asc")
     );
 
-    const unsubscribe = onSnapshot(messagesQuery, (querySnapshot) => {
-      const msgs: ChatMessage[] = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        timestamp: (doc.data().timestamp as Timestamp)?.toDate()?.toISOString() || new Date().toISOString(),
-      }) as ChatMessage);
+    const unsubscribe = onSnapshot(messagesQuery, async (querySnapshot) => {
+      const msgs: ChatMessage[] = querySnapshot.docs.map(docSnap => ({ // Renamed doc to docSnap
+        id: docSnap.id,
+        ...docSnap.data(),
+        timestamp: (docSnap.data().timestamp as Timestamp)?.toDate()?.toISOString() || new Date().toISOString(),
+      } as ChatMessage));
       setMessages(msgs);
       setIsLoadingMessages(false);
+
+      // Mark messages as read for current user
+      if (currentUser?.uid && selectedChatId) {
+        const currentConvoDetails = conversations.find(c => c.id === selectedChatId);
+        if (currentConvoDetails && (currentConvoDetails.unreadCount?.[currentUser.uid] || 0) > 0) {
+          try {
+            const conversationDocRef = doc(db, "conversations", selectedChatId);
+            const updatePath = `unreadCount.${currentUser.uid}`;
+            await updateDoc(conversationDocRef, {
+              [updatePath]: 0,
+              // Optionally update updatedAt timestamp if you want "seen" to also sort convos
+              // updatedAt: serverTimestamp() 
+            });
+            console.log(`ChatPage: Marked messages as read for user ${currentUser.uid} in chat ${selectedChatId}`);
+          } catch (error) {
+            console.error("Error marking messages as read:", error);
+            // Optional: toast error if needed, but might be too noisy
+          }
+        }
+      }
     }, (error) => {
       console.error(`Error fetching messages for chat ${selectedChatId}: `, error);
       toast({ title: "Error", description: "Could not fetch messages.", variant: "destructive" });
       setIsLoadingMessages(false);
     });
     
-    // Fetch other participant details for the selected chat
     const currentConvo = conversations.find(c => c.id === selectedChatId);
     if (currentConvo && currentUser) {
         const otherUid = currentConvo.participantUids.find(uid => uid !== currentUser.uid);
         if (otherUid) {
-            // Check if details are already in currentConvo.participants to avoid redundant fetch
             const existingOtherParticipant = currentConvo.participants?.find(p => p.uid === otherUid);
             if (existingOtherParticipant) {
                 setOtherParticipantDetails(existingOtherParticipant);
@@ -249,9 +261,8 @@ function ChatPageContent() {
         }
     }
 
-
     return () => unsubscribe();
-  }, [selectedChatId, currentUser, conversations, toast]);
+  }, [selectedChatId, currentUser, conversations, toast]); // Removed messages from deps here to avoid loop
 
 
   const handleSelectChat = (chatId: string) => {
@@ -281,7 +292,7 @@ function ChatPageContent() {
         return;
     }
 
-    const newMessage: Omit<ChatMessage, 'id'> & { timestamp: any } = { // Removed chatId as it's part of collection path
+    const newMessage: Omit<ChatMessage, 'id' | 'chatId'> & { timestamp: any } = {
       senderId: currentUser.uid,
       receiverId: receiverUid, 
       text: messageText,
@@ -295,7 +306,6 @@ function ChatPageContent() {
 
       const conversationDocRef = doc(db, "conversations", selectedChatId);
       
-      // Prepare update data, ensuring unreadCount for receiver is incremented correctly.
       const updateData: any = {
         lastMessage: {
           text: messageText,
@@ -304,12 +314,10 @@ function ChatPageContent() {
         },
         updatedAt: serverTimestamp(),
       };
-      // Increment unread count for the receiver
-      // Firestore's dot notation for map fields: `unreadCount.receiverUid`
       updateData[`unreadCount.${receiverUid}`] = (currentConvo.unreadCount?.[receiverUid] || 0) + 1;
+      updateData[`unreadCount.${currentUser.uid}`] = 0; // Sender's count is 0 for this chat
       
       await updateDoc(conversationDocRef, updateData);
-      // Messages state will update via onSnapshot
     } catch (error) {
         console.error("Error sending message:", error);
         toast({title: "Message Failed", description: "Could not send message.", variant: "destructive"});
@@ -364,11 +372,11 @@ function ChatPageContent() {
       </div>
       <div className="flex-1 flex flex-col bg-muted/20">
         <ChatMessages
-          conversation={selectedConversationDetails || null} // Pass the full convo object
+          conversation={selectedConversationDetails || null} 
           messages={messages}
           currentUser={currentUser}
           isLoading={isLoadingMessages}
-          otherParticipant={otherParticipantDetails} // Pass fetched details
+          otherParticipant={otherParticipantDetails} 
         />
         <ChatInput onSendMessage={handleSendMessage} disabled={!selectedChatId || isLoadingMessages} />
       </div>
@@ -383,5 +391,3 @@ export default function ChatPage() {
     </Suspense>
   );
 }
-
-    
