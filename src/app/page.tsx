@@ -22,18 +22,24 @@ export default function LandingPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/10 via-background to-background text-center p-6">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-lg font-semibold text-foreground">Loading CampusKart...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-background text-center p-6">
+        <div className="mb-8">
+          <AppLogo iconSize={60} textSize="text-5xl" />
+        </div>
+        <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+        <p className="text-md font-semibold text-muted-foreground">Initializing CampusKart...</p>
       </div>
     );
   }
 
-  if (user) { // Should be handled by useEffect redirect, but as a fallback
+  if (user) { // Should be handled by useEffect redirect, but as a fallback display a consistent loading screen
     return (
-       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/10 via-background to-background text-center p-6">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-lg font-semibold text-foreground">Redirecting to dashboard...</p>
+       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-background text-center p-6">
+        <div className="mb-8">
+          <AppLogo iconSize={60} textSize="text-5xl" />
+        </div>
+        <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+        <p className="text-md font-semibold text-muted-foreground">Redirecting to dashboard...</p>
       </div>
     );
   }
