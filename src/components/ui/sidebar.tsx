@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -29,7 +30,7 @@ const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 type SidebarContext = {
   state: "expanded" | "collapsed"
   open: boolean
-  setOpen: (open: boolean) => void
+  setOpen: (open: boolean, fromHover?: boolean) => void // Updated signature
   openMobile: boolean
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
@@ -52,7 +53,7 @@ const SidebarProvider = React.forwardRef<
   React.ComponentProps<"div"> & {
     defaultOpen?: boolean
     open?: boolean
-    onOpenChange?: (open: boolean) => void
+    onOpenChange?: (open: boolean) => void // Note: onOpenChange might not receive fromHover
   }
 >(
   (
@@ -69,34 +70,43 @@ const SidebarProvider = React.forwardRef<
   ) => {
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
+    const [_open, _setOpenState] = React.useState(defaultOpen)
+    const currentOpenState = openProp ?? _open
 
-    // This is the internal state of the sidebar.
-    // We use openProp and setOpenProp for control from outside the component.
-    const [_open, _setOpen] = React.useState(defaultOpen)
-    const open = openProp ?? _open
-    const setOpen = React.useCallback(
-      (value: boolean | ((value: boolean) => boolean)) => {
-        const openState = typeof value === "function" ? value(open) : value
+    const _internalSetOpen = React.useCallback(
+      (value: boolean | ((current: boolean) => boolean), fromHover: boolean = false) => {
+        const newOpenState = typeof value === 'function' ? value(currentOpenState) : value;
+        
         if (setOpenProp) {
-          setOpenProp(openState)
+          setOpenProp(newOpenState); // External control
         } else {
-          _setOpen(openState)
+          _setOpenState(newOpenState); // Internal control
         }
 
-        // This sets the cookie to keep the sidebar state.
-        document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+        // Only set cookie if on desktop, not from a hover interaction, and not externally controlled
+        if (!isMobile && !fromHover && typeof setOpenProp === 'undefined') {
+          document.cookie = `${SIDEBAR_COOKIE_NAME}=${newOpenState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+        }
       },
-      [setOpenProp, open]
-    )
+      [currentOpenState, isMobile, setOpenProp, _setOpenState]
+    );
+    
+    const setOpenForContext = React.useCallback(
+      (value: boolean | ((current: boolean) => boolean), fromHover: boolean = false) => {
+        _internalSetOpen(value, fromHover);
+      },
+      [_internalSetOpen]
+    );
 
-    // Helper to toggle the sidebar.
     const toggleSidebar = React.useCallback(() => {
-      return isMobile
-        ? setOpenMobile((open) => !open)
-        : setOpen((open) => !open)
-    }, [isMobile, setOpen, setOpenMobile])
+      if (isMobile) {
+        setOpenMobile((current) => !current);
+      } else {
+        // Explicit toggle, so not from hover
+        _internalSetOpen((current) => !current, false);
+      }
+    }, [isMobile, setOpenMobile, _internalSetOpen]);
 
-    // Adds a keyboard shortcut to toggle the sidebar.
     React.useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
         if (
@@ -112,21 +122,19 @@ const SidebarProvider = React.forwardRef<
       return () => window.removeEventListener("keydown", handleKeyDown)
     }, [toggleSidebar])
 
-    // We add a state so that we can do data-state="expanded" or "collapsed".
-    // This makes it easier to style the sidebar with Tailwind classes.
-    const state = open ? "expanded" : "collapsed"
+    const state = currentOpenState ? "expanded" : "collapsed"
 
     const contextValue = React.useMemo<SidebarContext>(
       () => ({
         state,
-        open,
-        setOpen,
+        open: currentOpenState,
+        setOpen: setOpenForContext,
         isMobile,
         openMobile,
         setOpenMobile,
         toggleSidebar,
       }),
-      [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+      [state, currentOpenState, setOpenForContext, isMobile, openMobile, setOpenMobile, toggleSidebar]
     )
 
     return (
@@ -175,7 +183,7 @@ const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+    const { isMobile, state, openMobile, setOpenMobile, setOpen } = useSidebar()
 
     if (collapsible === "none") {
       return (
@@ -244,6 +252,16 @@ const Sidebar = React.forwardRef<
               : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
             className
           )}
+          onMouseEnter={() => {
+            if (!isMobile && collapsible === "icon") {
+              setOpen(true, true); // fromHover = true
+            }
+          }}
+          onMouseLeave={() => {
+            if (!isMobile && collapsible === "icon") {
+              setOpen(false, true); // fromHover = true
+            }
+          }}
           {...props}
         >
           <div
@@ -761,3 +779,5 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
+    
