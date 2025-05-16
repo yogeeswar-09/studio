@@ -50,7 +50,7 @@ export default function LandingPage() {
             The Exclusive Marketplace <br className="hidden sm:inline" />for <span className="text-primary">MLRIT</span> Students
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground mb-10 max-w-xl mx-auto">
-            Discover great deals or sell your unused items – books, electronics, furniture, and more – all within your trusted campus community.
+            Discover great deals or sell your unused items – books, electronics, calculators, Lab Equipments, and more – all within your trusted campus community.
           </p>
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
             <Link href="/signup" legacyBehavior passHref>

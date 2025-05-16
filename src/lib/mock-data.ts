@@ -33,7 +33,7 @@ export const mockUsers: User[] = [
   },
 ];
 
-export const mockCategories: ListingCategory[] = ['Books', 'Electronics', 'Furniture', 'Clothing', 'Other'];
+export const mockCategories: ListingCategory[] = ['Books', 'Electronics', 'Calculators', 'Lab Equipments', 'Other'];
 
 // Chat related mocks are now removed as chat will be fetched from Firestore.
 // export const mockChatConversations: ChatConversation[] = [ ... ];

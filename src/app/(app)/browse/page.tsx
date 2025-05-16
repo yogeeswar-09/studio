@@ -13,6 +13,7 @@ import { Search as SearchIcon, ArrowLeft, ArrowRight, Frown, Loader2 } from 'luc
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 import { 
   collection, 
   query, 
@@ -21,7 +22,6 @@ import {
   limit, 
   getDocs, 
   startAfter, 
-  Query, 
   DocumentData, 
   Timestamp,
   QueryConstraint
@@ -33,6 +33,7 @@ function BrowsePageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
 
   const [allFetchedListings, setAllFetchedListings] = useState<Listing[]>([]);
   const [clientFilteredListings, setClientFilteredListings] = useState<Listing[]>([]);
@@ -123,12 +124,12 @@ function BrowsePageContent() {
       setIsLoading(false);
       setIsFetchingMore(false);
     }
-  }, [searchParams, sortBy, lastVisible]);
+  }, [searchParams, sortBy, lastVisible, toast]);
 
 
   useEffect(() => {
     fetchListings(false, 1); // Initial fetch or when major filters (URL-driven) change
-  }, [searchParams, sortBy]); // sortBy is now also in URL, handled by searchParams change
+  }, [fetchListings]); // sortBy is now also in URL, handled by searchParams change inside fetchListings
 
 
   // Client-side filtering for search term
@@ -204,8 +205,6 @@ function BrowsePageContent() {
     // fetchListings will be triggered by searchParams change
   };
   
-    const { toast } = useToast();
-
 
   return (
     <div className="flex flex-col lg:flex-row gap-8">
@@ -345,170 +344,4 @@ export default function BrowsePage() {
   );
 }
 
-```type ListingCategory } from '@/types';
-import { mockCategories } from '@/lib/mock-data'; // Kept for categories, remove mockListings
-import { Filter, X } from 'lucide-react';
-
-const MAX_PRICE = 5000; // Define a reasonable max price for slider
-
-export function FilterSidebar() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  // Local state for controlled components, initialized from URL
-  const [selectedCategories, setSelectedCategories] = useState<ListingCategory[]>(
-    searchParams.get('categories')?.split(',') as ListingCategory[] || []
-  );
-  const [priceRange, setPriceRange] = useState<[number, number]>([
-    parseInt(searchParams.get('minPrice') || '0', 10),
-    parseInt(searchParams.get('maxPrice') || MAX_PRICE.toString(), 10)
-  ]);
-
-  // Effect to sync local state if URL changes from outside (e.g. browser back/forward)
-  useEffect(() => {
-    setSelectedCategories(searchParams.get('categories')?.split(',') as ListingCategory[] || []);
-    setPriceRange([
-      parseInt(searchParams.get('minPrice') || '0', 10),
-      parseInt(searchParams.get('maxPrice') || MAX_PRICE.toString(), 10)
-    ]);
-  }, [searchParams]);
-
-  const handleCategoryChange = (category: ListingCategory) => {
-    setSelectedCategories(prev =>
-      prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
-    );
-  };
-
-  const handlePriceRangeChangeCommit = (value: [number, number]) => {
-    // This is called when slider interaction ends
-    setPriceRange(value);
-  };
-  
-  const handleMinPriceInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value, 10);
-    if (!isNaN(value)) {
-      setPriceRange([value, priceRange[1]]);
-    } else if (e.target.value === '') {
-      setPriceRange([0, priceRange[1]]);
-    }
-  };
-
-  const handleMaxPriceInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value, 10);
-     if (!isNaN(value)) {
-      setPriceRange([priceRange[0], value]);
-    } else if (e.target.value === '') {
-      setPriceRange([priceRange[0], MAX_PRICE]);
-    }
-  };
-
-  const applyFilters = () => {
-    const current = new URLSearchParams(Array.from(searchParams.entries()));
-
-    if (selectedCategories.length > 0) {
-      current.set('categories', selectedCategories.join(','));
-    } else {
-      current.delete('categories');
-    }
-
-    if (priceRange[0] > 0) {
-        current.set('minPrice', priceRange[0].toString());
-    } else {
-        current.delete('minPrice');
-    }
-    if (priceRange[1] < MAX_PRICE) {
-        current.set('maxPrice', priceRange[1].toString());
-    } else {
-        current.delete('maxPrice');
-    }
     
-    current.set('page', '1'); // Reset page to 1 when filters change
-
-    router.push(`${pathname}?${current.toString()}`);
-  };
-
-  const clearFilters = () => {
-    setSelectedCategories([]);
-    setPriceRange([0, MAX_PRICE]);
-    
-    const current = new URLSearchParams(Array.from(searchParams.entries()));
-    current.delete('categories');
-    current.delete('minPrice');
-    current.delete('maxPrice');
-    current.set('page', '1');
-    router.push(`${pathname}?${current.toString()}`);
-  };
-  
-  const hasActiveFilters = 
-    selectedCategories.length > 0 || 
-    priceRange[0] !== 0 || 
-    priceRange[1] !== MAX_PRICE || 
-    !!searchParams.get('categories') || 
-    !!searchParams.get('minPrice') || 
-    !!searchParams.get('maxPrice');
-
-  return (
-    <Card className="sticky top-20 shadow-md"> {/* Adjust top value based on header height */}
-      <CardHeader className="flex flex-row items-center justify-between pb-4">
-        <CardTitle className="text-xl flex items-center"><Filter className="mr-2 h-5 w-5 text-primary"/>Filters</CardTitle>
-        {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground hover:text-destructive">
-            <X className="mr-1 h-4 w-4" /> Clear
-          </Button>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div>
-          <h3 className="text-md font-semibold mb-3 text-foreground">Category</h3>
-          <div className="space-y-2">
-            {mockCategories.map(category => (
-              <div key={category} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`cat-${category}`}
-                  checked={selectedCategories.includes(category)}
-                  onCheckedChange={() => handleCategoryChange(category)}
-                />
-                <Label htmlFor={`cat-${category}`} className="font-normal cursor-pointer text-foreground/90">{category}</Label>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <h3 className="text-md font-semibold mb-3 text-foreground">Price Range</h3>
-          <Slider
-            min={0}
-            max={MAX_PRICE}
-            step={10}
-            value={priceRange} // Controlled component
-            onValueChange={setPriceRange} // For immediate visual feedback on slider drag
-            onValueCommit={handlePriceRangeChangeCommit} // To update state on drag end (optional, applyFilters is explicit)
-            className="mb-4"
-          />
-          <div className="flex justify-between items-center space-x-2 text-sm">
-            <Input
-              type="number"
-              value={priceRange[0]}
-              onChange={handleMinPriceInputChange}
-              className="w-1/2"
-              placeholder="Min"
-              aria-label="Minimum price"
-            />
-            <span className="text-muted-foreground">-</span>
-            <Input
-              type="number"
-              value={priceRange[1]}
-              onChange={handleMaxPriceInputChange}
-              className="w-1/2"
-              placeholder="Max"
-              aria-label="Maximum price"
-            />
-          </div>
-        </div>
-        
-        <Button onClick={applyFilters} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">Apply Filters</Button>
-      </CardContent>
-    </Card>
-  );
-}

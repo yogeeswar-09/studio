@@ -61,18 +61,16 @@ export function ChatMessageItem({ message, sender, isCurrentUserSender }: ChatMe
           <AvatarFallback>{getInitials(sender.name)}</AvatarFallback>
         </Avatar>
       )}
-       {isCurrentUserSender && !sender && ( // Placeholder if sender details are missing
+       {isCurrentUserSender && !sender && ( // Placeholder if sender (current user) details are missing
         <Avatar className="h-8 w-8 self-start bg-muted">
-          <AvatarFallback>{getInitials(currentUser?.name || 'Me')}</AvatarFallback>
+          {/* If sender (currentUser) is null, use a generic fallback.
+              This case implies currentUser object itself was null when passed to ChatMessages,
+              which should ideally be handled there. */}
+          <AvatarFallback>{getInitials(isCurrentUserSender ? 'Me' : '?')}</AvatarFallback>
         </Avatar>
       )}
     </div>
   );
 }
 
-// Assuming currentUser is accessible if sender is null & isCurrentUserSender is true
-// A better approach for current user avatar fallback would be passing currentUser details too
-// For now, this is a basic fallback.
-declare global {
-    var currentUser: User | null; // A bit of a hack for the fallback, ideally pass explicitly
-}
+    

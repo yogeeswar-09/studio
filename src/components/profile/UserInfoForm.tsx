@@ -14,6 +14,7 @@ import { Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ChangeEvent, useState, useEffect } from 'react';
 import type { User as AppUser } from '@/types';
+import Image from 'next/image'; // For preview
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -21,14 +22,37 @@ const profileSchema = z.object({
     message: "Invalid phone number format (10-15 digits)."
   }),
   avatarUrl: z.string().url("Invalid URL for pasted link.").optional().or(z.literal('')),
-  // Year and Branch are usually set at signup and might not be editable here
-  // If they should be editable, add them to this schema and form.
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
+const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+async function uploadAvatarToCloudinary(file: File): Promise<string> {
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+    throw new Error("Cloudinary environment variables not set for avatar upload.");
+  }
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET); // Ensure you have a suitable preset
+
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(`Cloudinary avatar upload failed: ${errorData.error.message}`);
+  }
+
+  const data = await response.json();
+  return data.secure_url;
+}
+
 export function UserInfoForm() {
-  const { user, firebaseUser, isLoading: authLoading, updateUserProfile } = useAuth();
+  const { user, firebaseUser, isLoading: authLoading, updateUserProfile, toast } = useAuth();
   const [formLoading, setFormLoading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -51,7 +75,7 @@ export function UserInfoForm() {
       });
       setAvatarPreview(user.avatarUrl || null);
     }
-  }, [user, form.reset]);
+  }, [user, form]);
 
 
   const handleAvatarUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -61,39 +85,52 @@ export function UserInfoForm() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatarPreview(reader.result as string);
-        form.setValue('avatarUrl', ''); 
       };
       reader.readAsDataURL(file);
+      form.setValue('avatarUrl', ''); 
     }
   };
 
   const handlePastedAvatarUrl = (url: string) => {
+    form.setValue('avatarUrl', url);
     setAvatarPreview(url);
     setAvatarFile(null); 
-    form.setValue('avatarUrl', url);
   }
 
   const onSubmit = async (data: ProfileFormValues) => {
     if (!user || !firebaseUser) return;
+
+    if (avatarFile && (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET)) {
+      toast({ title: "Configuration Error", description: "Cloudinary is not configured for avatar uploads.", variant: "destructive" });
+      console.error("Cloudinary environment variables for avatar upload are not set.");
+      return;
+    }
     setFormLoading(true);
     
-    const profileUpdateData: Partial<AppUser> = {
-      name: data.name,
-      contactInfo: { phone: data.phone || undefined },
-    };
-
-    if(data.avatarUrl && !avatarFile) { 
-        profileUpdateData.avatarUrl = data.avatarUrl;
-    }
-
+    let newAvatarCloudinaryUrl: string | undefined = data.avatarUrl;
 
     try {
-        await updateUserProfile(profileUpdateData, avatarFile);
-    } catch (error) {
+      if (avatarFile) {
+        newAvatarCloudinaryUrl = await uploadAvatarToCloudinary(avatarFile);
+      }
+
+      const profileUpdateData: Partial<AppUser> = {
+        name: data.name,
+        contactInfo: { phone: data.phone || undefined },
+        avatarUrl: newAvatarCloudinaryUrl || user.avatarUrl, // Use new URL or fallback to existing form URL or original user URL
+      };
+      
+      // Pass undefined for newAvatarFile if we used a pasted URL or no change.
+      // updateUserProfile in AuthContext will handle this structure.
+      await updateUserProfile(profileUpdateData, avatarFile);
+      // Toast for success is handled in AuthContext
+      setAvatarFile(null); // Clear file after successful upload
+
+    } catch (error: any) {
         console.error("Failed to update profile:", error);
+        toast({ title: "Update Failed", description: error.message || "Could not update your profile.", variant: "destructive" });
     } finally {
         setFormLoading(false);
-        // setAvatarFile(null); // Keep avatarFile for potential re-submission or clear it explicitly
     }
   };
 
@@ -122,10 +159,13 @@ export function UserInfoForm() {
               <FormControl>
                 <div className="mt-2 flex flex-col items-center gap-4">
                   <Avatar className="h-32 w-32">
-                    <AvatarImage src={avatarPreview || undefined} alt={user.name} data-ai-hint="user avatar" />
-                    <AvatarFallback className="text-3xl">
-                      {getInitials(user.name)}
-                    </AvatarFallback>
+                    {avatarPreview ? (
+                       <Image src={avatarPreview} alt={user.name || "User Avatar"} layout="fill" objectFit="cover" className="rounded-full" data-ai-hint="user avatar"/>
+                    ) : (
+                      <AvatarFallback className="text-3xl">
+                        {getInitials(form.getValues('name') || user.name)}
+                      </AvatarFallback>
+                    )}
                   </Avatar>
                   <Label 
                     htmlFor="avatar-upload"
@@ -204,7 +244,7 @@ export function UserInfoForm() {
                 <FormItem>
                   <FormLabel>Phone Number (Optional)</FormLabel>
                   <FormControl>
-                    <Input type="tel" placeholder="e.g., 9876543210" {...field} disabled={formLoading} />
+                    <Input type="tel" placeholder="e.g., 9876543210" {...field} value={field.value || ''} disabled={formLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

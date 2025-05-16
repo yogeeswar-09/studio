@@ -19,9 +19,8 @@ import { useRouter } from 'next/navigation';
 import { Loader2, UploadCloud } from 'lucide-react';
 import Image from 'next/image';
 import { useState, ChangeEvent, useEffect } from 'react';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 const listingSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters.").max(100, "Title too long."),
@@ -29,15 +28,40 @@ const listingSchema = z.object({
   price: z.coerce.number().positive("Price must be a positive number."),
   category: z.enum(mockCategories, { required_error: "Category is required." }),
   imageUrl: z.string().url("Image URL is required if not uploading a file.").optional().or(z.literal('')),
-  // imageFile is not part of schema, handled separately
 });
 
 type ListingFormValues = z.infer<typeof listingSchema>;
 
 interface ListingFormProps {
-  listing?: Listing; // For editing existing listing, fetched from Firestore
+  listing?: Listing;
   onSubmitSuccess?: (listingId: string) => void;
 }
+
+const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+async function uploadToCloudinary(file: File): Promise<string> {
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+    throw new Error("Cloudinary environment variables not set.");
+  }
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(`Cloudinary upload failed: ${errorData.error.message}`);
+  }
+
+  const data = await response.json();
+  return data.secure_url;
+}
+
 
 export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
   const { user } = useAuth();
@@ -68,9 +92,9 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
         imageUrl: listing.imageUrl || '',
       });
       setImagePreview(listing.imageUrl || null);
-      setImageFile(null); // Clear any previous file selection
+      setImageFile(null);
     } else {
-      form.reset({ // Reset to default for new listing
+      form.reset({
         title: '',
         description: '',
         price: 0,
@@ -91,14 +115,14 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
         setImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
-      form.setValue('imageUrl', ''); // Clear URL if file is selected
+      form.setValue('imageUrl', ''); 
     }
   };
   
   const handlePastedUrl = (url: string) => {
     form.setValue('imageUrl', url);
     setImagePreview(url);
-    setImageFile(null); // Clear file if URL is pasted
+    setImageFile(null); 
   }
 
   const onSubmit = async (data: ListingFormValues) => {
@@ -111,40 +135,21 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
         toast({ title: "Image Required", description: "Please upload an image or provide an image URL for your listing.", variant: "destructive" });
         return;
     }
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+      toast({ title: "Configuration Error", description: "Cloudinary is not configured. Please contact support.", variant: "destructive" });
+      console.error("Cloudinary environment variables NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME or NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET are not set.");
+      return;
+    }
 
     setIsLoading(true);
 
     try {
       let finalImageUrl = data.imageUrl;
-      let imageStoragePath: string | undefined = listing?.imageStoragePath;
 
       if (imageFile) {
-        // If editing and there's an old image, delete it first
-        if (listing && listing.imageStoragePath) {
-          try {
-            const oldImageRef = ref(storage, listing.imageStoragePath);
-            await deleteObject(oldImageRef);
-          } catch (error) {
-            console.warn("Could not delete old image, it might not exist or an error occurred:", error);
-            // Non-fatal, proceed with uploading new image
-          }
-        }
-        const newImageStoragePath = `listings/${user.uid}/${Date.now()}_${imageFile.name}`;
-        const imageRef = ref(storage, newImageStoragePath);
-        await uploadBytes(imageRef, imageFile);
-        finalImageUrl = await getDownloadURL(imageRef);
-        imageStoragePath = newImageStoragePath;
-      } else if (data.imageUrl && listing && data.imageUrl !== listing.imageUrl && listing.imageStoragePath) {
-        // URL changed from a storage path to a new pasted URL, delete old storage image
-         try {
-            const oldImageRef = ref(storage, listing.imageStoragePath);
-            await deleteObject(oldImageRef);
-            imageStoragePath = undefined; // New URL is not from our storage
-          } catch (error) {
-            console.warn("Could not delete old image when switching to new URL:", error);
-          }
+        finalImageUrl = await uploadToCloudinary(imageFile);
       }
-
+      // If only data.imageUrl is provided, we use that. No Cloudinary deletion logic for old URLs here as it's complex for external URLs.
 
       const listingData: Omit<Listing, 'id' | 'seller' | 'createdAt' | 'updatedAt'> & { createdAt?: any, updatedAt?: any } = {
         title: data.title,
@@ -152,19 +157,18 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
         price: data.price,
         category: data.category,
         imageUrl: finalImageUrl!,
-        imageStoragePath: imageStoragePath,
         sellerId: user.uid,
         status: 'available',
       };
 
       let listingId = listing?.id;
 
-      if (listing) { // Editing existing listing
+      if (listing) { 
         listingData.updatedAt = serverTimestamp();
         const listingRef = doc(db, "listings", listing.id);
-        await updateDoc(listingRef, listingData);
+        await updateDoc(listingRef, listingData as Partial<Listing>); // Cast to Partial as some fields might not be updated
         toast({ title: "Listing Updated!", description: `"${data.title}" has been updated.` });
-      } else { // Creating new listing
+      } else { 
         listingData.createdAt = serverTimestamp();
         listingData.updatedAt = serverTimestamp();
         const docRef = await addDoc(collection(db, "listings"), listingData);
@@ -300,7 +304,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                                   field.onChange(e.target.value);
                                   handlePastedUrl(e.target.value);
                                 }}
-                                disabled={isLoading || !!imageFile} // Disable if a file is chosen
+                                disabled={isLoading || !!imageFile} 
                             />
                         )}
                     />

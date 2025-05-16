@@ -21,9 +21,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase'; // Removed 'storage' import
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc, Timestamp } from 'firebase/firestore';
-import { ref, deleteObject } from 'firebase/storage';
+// Firebase storage 'ref' and 'deleteObject' are removed as Cloudinary is used.
 
 export function UserListings() {
   const { user } = useAuth();
@@ -66,23 +66,13 @@ export function UserListings() {
       // Delete Firestore document
       await deleteDoc(doc(db, "listings", listingToDelete.id));
 
-      // Delete image from Firebase Storage if imageStoragePath exists
-      if (listingToDelete.imageStoragePath) {
-        const imageRef = ref(storage, listingToDelete.imageStoragePath);
-        await deleteObject(imageRef);
-      } else if (listingToDelete.imageUrl.includes('firebasestorage.googleapis.com')) {
-        // Fallback if only imageUrl is available and it's a firebase storage URL
-        try {
-            const imageRef = ref(storage, listingToDelete.imageUrl);
-            await deleteObject(imageRef);
-        } catch (storageError) {
-            console.warn("Could not delete image from storage using full URL, it might require specific path or already deleted:", storageError);
-        }
-      }
-
+      // Note: Deleting the image from Cloudinary would typically require a backend (server-side) operation
+      // using Cloudinary's Admin API and your API Secret.
+      // This frontend-only implementation does not delete the image from Cloudinary.
+      console.log(`Listing ${listingToDelete.id} deleted. Associated image ${listingToDelete.imageUrl} on Cloudinary is not deleted from client-side.`);
 
       setUserListings(prev => prev.filter(item => item.id !== listingToDelete.id));
-      toast({ title: "Listing Deleted", description: `"${listingToDelete.title}" has been removed.` });
+      toast({ title: "Listing Deleted", description: `"${listingToDelete.title}" has been removed from Firestore.` });
     } catch (error: any) {
       console.error("Error deleting listing:", error);
       toast({ title: "Deletion Failed", description: error.message || "Could not delete the listing.", variant: "destructive" });
@@ -150,7 +140,7 @@ export function UserListings() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete your listing for "{item.title}".
+                        This action cannot be undone. This will permanently delete your listing for "{item.title}" from Firestore. The image on Cloudinary will not be automatically deleted.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

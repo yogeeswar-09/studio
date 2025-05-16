@@ -19,6 +19,7 @@ import {
   addDoc,
   updateDoc,
   doc,
+  getDoc, // Corrected import
   serverTimestamp,
   Timestamp,
   getDocs,
@@ -32,7 +33,7 @@ const fetchUserDetails = async (uid: string): Promise<User | null> => {
   if (!uid) return null;
   try {
     const userDocRef = doc(db, "users", uid);
-    const userDocSnap = await getDoc(userDocRef);
+    const userDocSnap = await getDoc(userDocRef); // Corrected to getDoc for single document
     if (userDocSnap.exists()) {
       return { uid: userDocSnap.id, ...userDocSnap.data() } as User;
     }
@@ -85,11 +86,11 @@ function ChatPageContent() {
           id: docSnap.id,
           ...data,
           participants: otherUserDetails ? [currentUser, otherUserDetails] : [currentUser], // Store fetched details
-          updatedAt: (data.updatedAt as Timestamp)?.toDate()?.toISOString() || new Date().toISOString(),
-          createdAt: (data.createdAt as Timestamp)?.toDate()?.toISOString() || new Date().toISOString(),
+ updatedAt: (data.updatedAt as Timestamp | null)?.toDate()?.toISOString() || new Date().toISOString(),
+ createdAt: (data.createdAt as Timestamp | null)?.toDate()?.toISOString() || new Date().toISOString(),
           lastMessage: data.lastMessage ? {
             ...data.lastMessage,
-            timestamp: (data.lastMessage.timestamp as Timestamp)?.toDate()?.toISOString() || new Date().toISOString()
+ timestamp: (data.lastMessage.timestamp as Timestamp | null)?.toDate()?.toISOString() || new Date().toISOString()
           } : undefined,
         } as ChatConversation);
       }
@@ -123,17 +124,35 @@ function ChatPageContent() {
         }
 
         // Check for existing conversation
+        // For a more scalable solution, consider querying for exact participantUids match if listingId is not a factor,
+        // or participantUids + listingId if it is.
+        // Example: where("participantUids", "==", [currentUser.uid, newChatWithUserId].sort())
+        // This requires participantUids to always be stored sorted.
         const existingQueryConstraints = [
             where("participantUids", "array-contains", currentUser.uid),
+            // Potentially add where("participantUids", "array-contains", newChatWithUserId) if supported and performant
+            // Or where("participantUids", "==", [currentUser.uid, newChatWithUserId].sort()) if you store sorted.
+            // For now, filtering client-side after fetching conversations involving current user.
         ];
+        if (itemId) {
+             existingQueryConstraints.push(where("listingId", "==", itemId));
+        }
+
         const existingQuery = query(collection(db, "conversations"), ...existingQueryConstraints);
         const existingSnapshot = await getDocs(existingQuery);
         
         let foundConversation: ChatConversation | null = null;
         existingSnapshot.forEach(doc => {
-            const data = doc.data() as ChatConversation;
-            if (data.participantUids.includes(newChatWithUserId) && (!itemId || data.listingId === itemId)) {
-                foundConversation = {id: doc.id, ...data} as ChatConversation;
+            const data = doc.data();
+            // Ensure both participants are in the conversation
+            const uids = data.participantUids as string[];
+            if (uids.includes(newChatWithUserId) && uids.includes(currentUser.uid)) {
+                 // If itemId is present, ensure it matches. If no itemId, then any chat between these users.
+                if (itemId && data.listingId === itemId) {
+                     foundConversation = {id: doc.id, ...data} as ChatConversation;
+                } else if (!itemId) { // If no specific item, first chat found between users
+                     foundConversation = {id: doc.id, ...data} as ChatConversation;
+                }
             }
         });
 
@@ -146,7 +165,7 @@ function ChatPageContent() {
           if (otherUser) {
             const newConvoData = {
               participantUids: [currentUser.uid, newChatWithUserId].sort(), // Store sorted UIDs for easier querying
-              participants: [currentUser, otherUser], // Temporarily, will be fetched
+              participants: [], // Will be populated on fetch by ChatList/ChatItem
               listingId: itemId || null,
               lastMessage: null,
               unreadCount: { [currentUser.uid]: 0, [newChatWithUserId]: 0 },
@@ -204,7 +223,7 @@ function ChatPageContent() {
         id: doc.id,
         ...doc.data(),
         timestamp: (doc.data().timestamp as Timestamp)?.toDate()?.toISOString() || new Date().toISOString(),
-      } as ChatMessage));
+ }) as ChatMessage));
       setMessages(msgs);
       setIsLoadingMessages(false);
     }, (error) => {
@@ -218,7 +237,13 @@ function ChatPageContent() {
     if (currentConvo && currentUser) {
         const otherUid = currentConvo.participantUids.find(uid => uid !== currentUser.uid);
         if (otherUid) {
-            fetchUserDetails(otherUid).then(setOtherParticipantDetails);
+            // Check if details are already in currentConvo.participants to avoid redundant fetch
+            const existingOtherParticipant = currentConvo.participants?.find(p => p.uid === otherUid);
+            if (existingOtherParticipant) {
+                setOtherParticipantDetails(existingOtherParticipant);
+            } else {
+                fetchUserDetails(otherUid).then(setOtherParticipantDetails);
+            }
         } else {
             setOtherParticipantDetails(null);
         }
@@ -256,9 +281,9 @@ function ChatPageContent() {
         return;
     }
 
-    const newMessage: Omit<ChatMessage, 'id' | 'chatId'> & { timestamp: any } = {
+    const newMessage: Omit<ChatMessage, 'id'> & { timestamp: any } = { // Removed chatId as it's part of collection path
       senderId: currentUser.uid,
-      receiverId: receiverUid, // Store receiverId as well
+      receiverId: receiverUid, 
       text: messageText,
       timestamp: serverTimestamp(),
       isRead: false,
@@ -269,15 +294,21 @@ function ChatPageContent() {
       await addDoc(messagesColRef, newMessage);
 
       const conversationDocRef = doc(db, "conversations", selectedChatId);
-      await updateDoc(conversationDocRef, {
+      
+      // Prepare update data, ensuring unreadCount for receiver is incremented correctly.
+      const updateData: any = {
         lastMessage: {
           text: messageText,
           senderId: currentUser.uid,
           timestamp: serverTimestamp(),
         },
         updatedAt: serverTimestamp(),
-        [`unreadCount.${receiverUid}`]: (currentConvo.unreadCount?.[receiverUid] || 0) + 1,
-      });
+      };
+      // Increment unread count for the receiver
+      // Firestore's dot notation for map fields: `unreadCount.receiverUid`
+      updateData[`unreadCount.${receiverUid}`] = (currentConvo.unreadCount?.[receiverUid] || 0) + 1;
+      
+      await updateDoc(conversationDocRef, updateData);
       // Messages state will update via onSnapshot
     } catch (error) {
         console.error("Error sending message:", error);
@@ -352,3 +383,5 @@ export default function ChatPage() {
     </Suspense>
   );
 }
+
+    

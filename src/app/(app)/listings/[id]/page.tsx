@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, MessageCircle, Edit3, Loader2 } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Edit3, Loader2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -57,12 +57,12 @@ export default function ListingDetailPage() {
             }
           } else {
             console.log("No such listing document!");
-            setListing(null); // Or router.push('/404')
+            setListing(null); 
             router.push('/browse?error=notfound');
           }
         } catch (error) {
           console.error("Error fetching listing details:", error);
-          setListing(null); // Or show error state
+          setListing(null); 
         } finally {
           setIsLoading(false);
         }
@@ -111,7 +111,7 @@ export default function ListingDetailPage() {
   if (!listing) {
     return (
       <div className="container mx-auto py-8 text-center">
-        <Frown className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
+        <AlertTriangle className="mx-auto h-16 w-16 text-destructive mb-4" />
         <h3 className="text-xl font-semibold text-foreground mb-2">Listing not found</h3>
         <p className="text-muted-foreground">This item may have been removed or the link is incorrect.</p>
         <Button onClick={() => router.push('/browse')} className="mt-6">Browse Other Items</Button>
@@ -166,7 +166,7 @@ export default function ListingDetailPage() {
                 <Badge variant="secondary" className="text-sm ml-2">{listing.category}</Badge>
               </div>
               <CardDescription className="text-3xl font-extrabold text-primary mt-2">
-                ${listing.price.toFixed(2)}
+                ₹{listing.price.toFixed(2)}
               </CardDescription>
               <p className="text-xs text-muted-foreground mt-1">Listed {timeAgo}</p>
                {listing.status === 'sold' && (
@@ -219,3 +219,5 @@ export default function ListingDetailPage() {
     </div>
   );
 }
+
+    

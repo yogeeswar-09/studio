@@ -33,9 +33,9 @@ export function ItemCard({ item }: ItemCardProps) {
             </CardTitle>
           </Link>
           <Badge variant="secondary" className="whitespace-nowrap shrink-0">{item.category}</Badge>
-        </div>
+    </div>
         <CardDescription className="text-xl font-bold text-primary mt-1">
-          ${item.price.toFixed(2)}
+₹{item.price.toFixed(2)}
         </CardDescription>
       </CardHeader>
       <CardContent className="p-4 pt-0 text-sm text-muted-foreground flex-grow">

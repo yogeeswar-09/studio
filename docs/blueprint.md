@@ -2,7 +2,7 @@
 
 ## Core Features:
 
-- Browse Listings: Allow students to browse items for sale, with filtering by category (books, electronics, etc.) and price.
+- Browse Listings: Allow students to browse items for sale, with filtering by category (books, electronics, calculators, Lab Equipments) and price.
 - Create Listings: Enable students to create listings with images, descriptions, and prices.
 - In-App Chat: In-app chat functionality for direct communication between buyers and sellers.
 - User Profile: A simple user profile to view active listings and update contact information.

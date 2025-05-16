@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -67,8 +68,7 @@ export function FilterSidebar() {
     current.set('minPrice', priceRange[0].toString());
     current.set('maxPrice', priceRange[1].toString());
     
-    // Reset page to 1 when filters change
-    current.delete('page');
+    current.set('page', '1'); // Reset page to 1 when filters change
 
     const search = current.toString();
     const query = search ? `?${search}` : '';
@@ -78,10 +78,25 @@ export function FilterSidebar() {
   const clearFilters = () => {
     setSelectedCategories([]);
     setPriceRange([0, MAX_PRICE]);
-    router.push(pathname);
+    
+    const current = new URLSearchParams(Array.from(searchParams.entries()));
+    current.delete('categories');
+    current.delete('minPrice');
+    current.delete('maxPrice');
+    current.set('page', '1'); // Reset page to 1
+    
+    const search = current.toString();
+    const query = search ? `?${search}` : '';
+    router.push(`${pathname}${query}`);
   };
   
-  const hasActiveFilters = selectedCategories.length > 0 || priceRange[0] !== 0 || priceRange[1] !== MAX_PRICE || searchParams.get('categories') || searchParams.get('minPrice') || searchParams.get('maxPrice');
+  const hasActiveFilters = 
+    selectedCategories.length > 0 || 
+    priceRange[0] !== 0 || 
+    priceRange[1] !== MAX_PRICE || 
+    searchParams.get('categories') || 
+    searchParams.get('minPrice') || 
+    searchParams.get('maxPrice');
 
   return (
     <Card className="sticky top-20"> {/* Adjust top value based on header height */}
@@ -144,3 +159,5 @@ export function FilterSidebar() {
     </Card>
   );
 }
+
+    

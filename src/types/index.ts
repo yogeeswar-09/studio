@@ -19,10 +19,9 @@ export type User = {
   };
   createdAt: Timestamp | string; // Store as Firestore Timestamp, allow string for intermediate use
   updatedAt?: Timestamp | string;
-  // 'id' field was used for mock data, uid is the standard identifier
 };
 
-export type ListingCategory = 'Books' | 'Electronics' | 'Furniture' | 'Clothing' | 'Other';
+export type ListingCategory = 'Books' | 'Electronics' | 'Calculators' | 'Lab Equipments' | 'Other';
 
 export type Listing = {
   id: string; // Firestore document ID
@@ -30,8 +29,7 @@ export type Listing = {
   description: string;
   price: number;
   category: ListingCategory;
-  imageUrl: string;
-  imageStoragePath?: string; // To help with deleting from Firebase Storage
+  imageUrl: string; // Cloudinary URL
   sellerId: string; // User uid
   seller?: User; // Populated client-side
   createdAt: Timestamp | string; // Firestore Timestamp or ISO date string
@@ -63,3 +61,4 @@ export type ChatConversation = {
   updatedAt: Timestamp | string; // Firestore Timestamp or ISO date string
   createdAt: Timestamp | string; // Firestore Timestamp or ISO date string
 };
+
