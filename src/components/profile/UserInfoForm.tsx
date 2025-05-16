@@ -9,15 +9,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/use-auth';
 import { Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ChangeEvent, useState, useEffect } from 'react';
-import type { User as AppUser } from '@/types';
+import type { User as AppUser, UserYear } from '@/types';
+import { userYears } from '@/types'; // Import userYears
 import Image from 'next/image'; // For preview
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
+  year: z.enum(userYears, { required_error: "Please select your year of study." }), // Add year to schema
   phone: z.string().optional().refine(val => !val || /^\d{10,15}$/.test(val), {
     message: "Invalid phone number format (10-15 digits)."
   }),
@@ -35,7 +38,7 @@ async function uploadAvatarToCloudinary(file: File): Promise<string> {
   }
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET); // Ensure you have a suitable preset
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
 
   const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
     method: 'POST',
@@ -61,6 +64,7 @@ export function UserInfoForm() {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: '',
+      year: undefined, // Initialize year
       phone: '',
       avatarUrl: '',
     },
@@ -70,6 +74,7 @@ export function UserInfoForm() {
     if (user) {
       form.reset({
         name: user.name || '',
+        year: user.year || undefined, // Set year from user data
         phone: user.contactInfo?.phone || '',
         avatarUrl: user.avatarUrl || '',
       });
@@ -116,15 +121,13 @@ export function UserInfoForm() {
 
       const profileUpdateData: Partial<AppUser> = {
         name: data.name,
+        year: data.year, // Include year in update data
         contactInfo: { phone: data.phone || undefined },
-        avatarUrl: newAvatarCloudinaryUrl || user.avatarUrl, // Use new URL or fallback to existing form URL or original user URL
+        avatarUrl: newAvatarCloudinaryUrl || user.avatarUrl,
       };
       
-      // Pass undefined for newAvatarFile if we used a pasted URL or no change.
-      // updateUserProfile in AuthContext will handle this structure.
       await updateUserProfile(profileUpdateData, avatarFile);
-      // Toast for success is handled in AuthContext
-      setAvatarFile(null); // Clear file after successful upload
+      setAvatarFile(null);
 
     } catch (error: any) {
         console.error("Failed to update profile:", error);
@@ -149,7 +152,7 @@ export function UserInfoForm() {
     <Card>
       <CardHeader>
         <CardTitle>Profile Information</CardTitle>
-        <CardDescription>Update your personal details. Your MLRIT email ({user.email}) cannot be changed.</CardDescription>
+        <CardDescription>Update your personal details. Your MLRIT email ({user.email}) and branch cannot be changed here.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -224,11 +227,33 @@ export function UserInfoForm() {
             </FormItem>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <FormItem>
-                <FormLabel>Year</FormLabel>
-                <Input value={user.year || 'Not set'} disabled className="bg-muted/50 cursor-not-allowed" />
-                 <FormDescription>Your year of study (set at signup).</FormDescription>
-              </FormItem>
+               <FormField
+                control={form.control}
+                name="year"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Year</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value} 
+                      value={field.value} 
+                      disabled={formLoading}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select your year" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {userYears.map(yearValue => (
+                          <SelectItem key={yearValue} value={yearValue}>{yearValue}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormItem>
                 <FormLabel>Branch</FormLabel>
                 <Input value={user.branch || 'Not set'} disabled className="bg-muted/50 cursor-not-allowed" />
