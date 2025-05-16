@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Mail, Users } from "lucide-react"; // Added icons
 
 export default function AboutUsPage() {
   return (
@@ -27,7 +28,9 @@ export default function AboutUsPage() {
 
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl font-semibold text-accent">Our Team</CardTitle>
+              <CardTitle className="text-2xl font-semibold text-accent flex items-center">
+                <Users className="mr-3 h-6 w-6" /> Our Team
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-foreground/90">
               <p>
@@ -36,7 +39,25 @@ export default function AboutUsPage() {
               <p>
                 We are a group of passionate students dedicated to leveraging technology to solve real-world problems and enhance campus life. This project is a testament to our collaborative spirit and commitment to our fellow students.
               </p>
-              {/* You can add team member names or roles here if desired in the future */}
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-2xl font-semibold text-accent flex items-center">
+                <Mail className="mr-3 h-6 w-6" /> Contact Us
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-foreground/90">
+              <p>
+                Encountering issues or have suggestions? We'd love to hear from you!
+              </p>
+              <p>
+                Team - Code Crafters is available to assist. You can typically find us in the <strong className="text-primary">CSM-B section labs</strong> during college hours, or you can reach out to one of our team representatives.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                (Please consider adding specific contact details like a team email address or individual student representative names here if appropriate and with their consent.)
+              </p>
             </CardContent>
           </Card>
 
@@ -84,7 +105,7 @@ export default function AboutUsPage() {
                   <strong>Governing Law:</strong> These terms shall be governed by the laws of India, without regard to its conflict of law provisions.
                 </li>
                 <li>
-                  <strong>Contact:</strong> For any questions regarding these terms, please contact us (provide contact method if desired).
+                  <strong>Contact:</strong> For any questions regarding these terms, please contact us (refer to the 'Contact Us' section above).
                 </li>
               </ol>
               <Separator className="my-6" />
