@@ -1,4 +1,5 @@
-import { ShoppingCart } from 'lucide-react';
+
+import { CampusKartIcon } from './CampusKartIcon'; // Changed import
 import Link from 'next/link';
 
 type AppLogoProps = {
@@ -10,7 +11,7 @@ type AppLogoProps = {
 export function AppLogo({ className, iconSize = 28, textSize = "text-2xl" }: AppLogoProps) {
   return (
     <Link href="/" className={`flex items-center gap-2 ${className}`}>
-      <ShoppingCart className="text-primary" size={iconSize} strokeWidth={2.5} />
+      <CampusKartIcon className="text-primary" style={{ width: iconSize, height: iconSize }} /> {/* Used CampusKartIcon */}
       <span className={`font-bold ${textSize} text-primary tracking-tight`}>
         CampusKart
       </span>

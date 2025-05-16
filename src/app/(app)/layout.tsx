@@ -16,7 +16,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Settings, LogOut, ShoppingBag as ShoppingBagIconLucide } from "lucide-react"; // Renamed to avoid conflict
+import { Settings, LogOut } from "lucide-react";
+import { CampusKartIcon } from "@/components/common/CampusKartIcon"; // Import new icon
 import Link from "next/link";
 import React from "react";
 
@@ -47,14 +48,14 @@ export default function AppLayout({
 
   return (
     <AuthGuard>
-      <SidebarProvider defaultOpen={true}>
+      <SidebarProvider defaultOpen={false}> {/* Changed defaultOpen to false */}
         <Sidebar collapsible="icon" variant="sidebar" side="left" className="border-r">
           <SidebarHeader className="p-4">
             {/* Logo visible when sidebar expanded, icon-only could show smaller version or just icon */}
             <div className="flex items-center justify-between">
                <AppLogo className="group-data-[collapsible=icon]:hidden" />
                <div className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full">
-                 <ShoppingBagLogoShort />
+                 <CampusKartIconLogoShort /> {/* Updated to use new short logo */}
                </div>
                <SidebarTrigger className="hidden group-data-[collapsible=icon]:hidden md:flex" />
             </div>
@@ -88,17 +89,8 @@ export default function AppLayout({
 }
 
 // A smaller logo for collapsed sidebar
-const ShoppingBagLogoShort = () => (
+const CampusKartIconLogoShort = () => ( // Renamed and updated
   <Link href="/" className="flex items-center justify-center">
-    <ShoppingBagIconLucide className="h-6 w-6 text-primary" /> {/* Changed to use imported Lucide icon */}
+    <CampusKartIcon className="h-6 w-6 text-primary" /> {/* Used CampusKartIcon */}
   </Link>
 );
-
-// Placeholder for ShoppingBag icon if not available, adjust as needed
-// Removed the inline SVG ShoppingBag component as we can use the Lucide one.
-// Ensure ShoppingBag from lucide-react is imported if it wasn't already.
-// If there was a specific reason for the custom SVG, it can be re-added, but it's good practice to use icons from a library if available.
-// For now, I'm assuming the Lucide icon `ShoppingBagIconLucide` is sufficient.
-// If `ShoppingBag` was meant to be a distinct custom icon, that code would need to be preserved or clarified.
-// Based on the usage, it looks like a general shopping bag icon, which Lucide provides.
-// I've also updated the import from `lucide-react` to `ShoppingBag as ShoppingBagIconLucide` to avoid naming conflicts if any other `ShoppingBag` component existed.
