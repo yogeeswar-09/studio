@@ -19,7 +19,7 @@ import {
   addDoc,
   updateDoc,
   doc,
-  getDoc, // Corrected import
+  getDoc,
   serverTimestamp,
   Timestamp,
   getDocs,
@@ -33,7 +33,7 @@ const fetchUserDetails = async (uid: string): Promise<User | null> => {
   if (!uid) return null;
   try {
     const userDocRef = doc(db, "users", uid);
-    const userDocSnap = await getDoc(userDocRef); // Corrected to getDoc for single document
+    const userDocSnap = await getDoc(userDocRef);
     if (userDocSnap.exists()) {
       return { uid: userDocSnap.id, ...userDocSnap.data() } as User;
     }
@@ -223,7 +223,7 @@ function ChatPageContent() {
         id: doc.id,
         ...doc.data(),
         timestamp: (doc.data().timestamp as Timestamp)?.toDate()?.toISOString() || new Date().toISOString(),
- }) as ChatMessage));
+      }) as ChatMessage);
       setMessages(msgs);
       setIsLoadingMessages(false);
     }, (error) => {
