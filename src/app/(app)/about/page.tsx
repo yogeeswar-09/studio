@@ -2,12 +2,12 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Mail, Users } from "lucide-react"; // Added icons
+import { Mail, Users, BookOpenCheck } from "lucide-react"; // Added BookOpenCheck for Terms
 
 export default function AboutUsPage() {
   return (
     <div className="container mx-auto py-8 px-4 md:px-0">
-      <ScrollArea className="h-[calc(100vh-var(--header-height,4rem)-4rem)] pr-4"> {/* Adjust height as needed */}
+      <ScrollArea className="h-[calc(100vh-var(--header-height,4rem)-4rem)] pr-4">
         <div className="space-y-12">
           <Card className="shadow-lg">
             <CardHeader>
@@ -53,17 +53,19 @@ export default function AboutUsPage() {
                 Encountering issues or have suggestions? We'd love to hear from you!
               </p>
               <p>
-                Team - Code Crafters is available to assist. You can typically find us in the <strong className="text-primary">CSM-B section labs</strong> during college hours, or you can reach out to one of our team representatives.
+                You can reach Team - Code Crafters at: <a href="mailto:Codecraftersmlr@gmail.com" className="text-primary hover:underline font-semibold">Codecraftersmlr@gmail.com</a>.
               </p>
-              <p className="text-sm text-muted-foreground">
-                (Please consider adding specific contact details like a team email address or individual student representative names here if appropriate and with their consent.)
+              <p>
+                Alternatively, you can typically find us in the <strong className="text-primary">CSM-B section labs</strong> during college hours, or you can reach out to one of our team representatives.
               </p>
             </CardContent>
           </Card>
 
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl font-semibold">Terms & Conditions</CardTitle>
+              <CardTitle className="text-2xl font-semibold flex items-center">
+                 <BookOpenCheck className="mr-3 h-6 w-6 text-muted-foreground" /> Terms & Conditions
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-muted-foreground">
               <p className="font-medium text-foreground/80">
@@ -87,7 +89,7 @@ export default function AboutUsPage() {
                   <strong>Prohibited Items:</strong> Listing illegal items, hazardous materials, counterfeit goods, services (unless explicitly permitted), or any items that violate college policy is strictly forbidden.
                 </li>
                 <li>
-                  <strong>Privacy:</strong> Your privacy is important to us. Please refer to our Privacy Policy (link to be added if you create one) for information on how we collect, use, and protect your data.
+                  <strong>Privacy:</strong> Your privacy is important to us. We collect and use your data (name, email, year, branch, listings, chat messages) to provide and improve CampusKart. By using the platform, you consent to this. We do not sell your personal data to third parties. (A more detailed Privacy Policy can be added separately).
                 </li>
                 <li>
                   <strong>Disclaimer of Warranties:</strong> CampusKart provides this platform 'as is' and 'as available' without any warranties, express or implied. We do not guarantee the accuracy, completeness, or reliability of any content or listings.
@@ -105,7 +107,7 @@ export default function AboutUsPage() {
                   <strong>Governing Law:</strong> These terms shall be governed by the laws of India, without regard to its conflict of law provisions.
                 </li>
                 <li>
-                  <strong>Contact:</strong> For any questions regarding these terms, please contact us (refer to the 'Contact Us' section above).
+                  <strong>Contact:</strong> For any questions regarding these terms, please contact us at <a href="mailto:Codecraftersmlr@gmail.com" className="text-primary hover:underline">Codecraftersmlr@gmail.com</a> or refer to the 'Contact Us' section above.
                 </li>
               </ol>
               <Separator className="my-6" />
