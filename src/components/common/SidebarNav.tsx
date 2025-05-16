@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -21,8 +22,8 @@ import {
   User,
   BookOpen,
   Laptop,
-  Sofa,
-  Shirt,
+  Calculator, // Added Calculator icon
+  FlaskConical, // Added FlaskConical icon for Lab Equipments
   Settings,
   ShoppingBag,
 } from "lucide-react";
@@ -46,8 +47,8 @@ const mainNavItems: NavItem[] = [
 const categoryNavItems: NavItem[] = [
   { href: "/browse?category=Books", label: "Books", icon: BookOpen },
   { href: "/browse?category=Electronics", label: "Electronics", icon: Laptop },
-  { href: "/browse?category=Furniture", label: "Furniture", icon: Sofa },
-  { href: "/browse?category=Clothing", label: "Clothing", icon: Shirt },
+  { href: "/browse?category=Calculators", label: "Calculators", icon: Calculator },
+  { href: "/browse?category=Lab%20Equipments", label: "Lab Equipments", icon: FlaskConical },
 ];
 
 
@@ -56,7 +57,20 @@ export function SidebarNav() {
   const { state: sidebarState } = useSidebar(); // For tooltip logic based on collapsed state
 
   const renderNavItem = (item: NavItem, index: number) => {
-    const isActive = item.matchExact ? pathname === item.href : pathname.startsWith(item.href);
+    // For category links, check if the category query param matches
+    let isActive = false;
+    if (item.href.includes('/browse?category=')) {
+        const urlParams = new URLSearchParams(item.href.split('?')[1]);
+        const categoryParam = urlParams.get('category');
+        
+        const currentUrlParams = new URLSearchParams(window.location.search);
+        const currentCategoryParam = currentUrlParams.get('category');
+
+        isActive = pathname.startsWith("/browse") && categoryParam === currentCategoryParam;
+    } else {
+        isActive = item.matchExact ? pathname === item.href : pathname.startsWith(item.href);
+    }
+    
     return (
       <SidebarMenuItem key={`${item.label}-${index}`}>
         <Link href={item.href} passHref legacyBehavior>
