@@ -61,7 +61,7 @@ export function ItemCard({ item }: ItemCardProps) {
             View Details <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </Link>
-        {sellerId && itemId ? (
+        {sellerId && itemId && item.status !== 'sold' ? ( // Check for item status
           <Link href={`/chat?newChatWith=${sellerId}&itemId=${itemId}`} className="w-full sm:w-auto" passHref legacyBehavior>
             <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
                <MessageCircle className="mr-2 h-4 w-4" /> Chat with Seller
