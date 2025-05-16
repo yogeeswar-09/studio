@@ -12,7 +12,7 @@ import {
   updateProfile as updateFirebaseProfile,
   type User as FirebaseUserType
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp, updateDoc, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, updateDoc, Timestamp, type FieldValue } from 'firebase/firestore'; // Added FieldValue
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -66,16 +66,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      console.log("AuthContext: onAuthStateChanged triggered. fbUser:", fbUser?.uid, "Current isLoading state:", isLoading);
-      // Keep setIsLoading(true) at the start of this effect might be too aggressive
-      // if it's already false and this is just a minor auth update.
-      // Let's try setting it true only if fbUser state actually changes significantly.
-      // For now, the existing logic is:
+      console.log("AuthContext: onAuthStateChanged triggered. fbUser UID:", fbUser?.uid, "Current isLoading state:", isLoading);
       setIsLoading(true); 
       try {
         if (fbUser) {
           console.log("AuthContext: Firebase user found:", fbUser.uid, "Email verified:", fbUser.emailVerified);
-          setFirebaseUser(fbUser); // Set firebaseUser state
+          setFirebaseUser(fbUser);
           const userDocRef = doc(db, "users", fbUser.uid);
           const userDocSnap = await getDoc(userDocRef);
           if (userDocSnap.exists()) {
@@ -89,7 +85,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             } as AppUser;
             setUser(appUser);
           } else {
-            console.warn("AuthContext: User document NOT found in Firestore for UID:", fbUser.uid);
+            console.warn("AuthContext: User document NOT found in Firestore for UID:", fbUser.uid, "Logging out.");
             await firebaseSignOut(auth); 
             setUser(null); 
             setFirebaseUser(null);
@@ -102,15 +98,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } catch (error) {
         console.error("AuthContext: Error processing auth state:", error);
         setUser(null); 
-        setFirebaseUser(fbUser); 
+        setFirebaseUser(fbUser); // Keep fbUser if processing failed, might be an intermittent Firestore issue
       } finally {
         setIsLoading(false); 
-        console.log("AuthContext: onAuthStateChanged processing finished. New isLoading:", false, "User UID:", user?.uid, "FB User UID:", firebaseUser?.uid);
+        console.log("AuthContext: onAuthStateChanged processing finished. New isLoading:", false, "User UID:", user?.uid);
       }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, []); // Removed user & firebaseUser from deps to avoid re-runs based on their own setting
 
   useEffect(() => {
     if (isLoading) {
@@ -152,13 +148,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           variant: "destructive",
           duration: 7000,
         });
-        // Redirection is handled by the useEffect hook based on emailVerified status
       } else {
         toast({ title: "Login Successful", description: "Welcome back!"});
-        // Redirection to dashboard is handled by useEffect
       }
-      // onAuthStateChanged will handle setting user and setIsLoading(false) for the app state.
-      // setIsLoading(false) here might be premature if onAuthStateChanged hasn't fully processed.
     } catch (error: any) {
       setIsLoading(false); 
       console.error("AuthContext: Login error -", error.code, error.message);
@@ -184,7 +176,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await updateFirebaseProfile(fbUser, { displayName: name });
       console.log(`AuthContext: Firebase Auth profile updated for ${email}`);
 
-      const userProfile: Omit<AppUser, 'uid' | 'createdAt' | 'updatedAt'> & { createdAt: any, updatedAt: any } = {
+      const userProfile: Omit<AppUser, 'uid' | 'createdAt' | 'updatedAt'> & { createdAt: FieldValue, updatedAt: FieldValue } = {
         name,
         email,
         year,
@@ -195,7 +187,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         updatedAt: serverTimestamp(),
       };
 
-      console.log(`AuthContext: Storing user profile in Firestore for ${email}:`, userProfile);
+      console.log(`AuthContext: Storing user profile in Firestore for ${email}:`, JSON.stringify(userProfile, null, 2)); // More detailed log
       await setDoc(doc(db, "users", fbUser.uid), userProfile);
       console.log(`AuthContext: User profile stored in Firestore for ${email}`);
       
@@ -204,12 +196,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log(`AuthContext: Verification email dispatched to ${fbUser.email}.`);
       
       toast({ 
-        title: "Account Created! Verify Your Email", 
-        description: `A verification link has been sent to ${fbUser.email}. Please check your inbox (and spam folder). You'll be redirected to the verification page.`, 
+        title: "Account Created! Please Verify Your Email.", 
+        description: `A verification link has been sent to ${fbUser.email}. Check your inbox (and spam folder!). You will be redirected.`, 
         duration: 10000 
       });
-      // onAuthStateChanged and useEffect will handle redirection.
-      // setIsLoading(false) will be handled by onAuthStateChanged after user state is updated.
     } catch (error: any) {
       setIsLoading(false); 
       console.error(`AuthContext: Signup error for ${email}:`, error.code, error.message, error);
@@ -220,9 +210,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     console.log("AuthContext: logout initiated");
     setIsLoading(true);
-    await firebaseSignOut(auth);
-    console.log("AuthContext: firebaseSignOut completed");
-    // onAuthStateChanged will set user to null and setIsLoading(false).
+    try {
+        await firebaseSignOut(auth);
+        console.log("AuthContext: firebaseSignOut completed");
+        setUser(null);
+        setFirebaseUser(null);
+        // No need to push to /login here if onAuthStateChanged handles it, but can be explicit
+        router.push('/login'); 
+    } catch(error) {
+        console.error("AuthContext: Error during logout:", error);
+        toast({ title: "Logout Failed", description: "Could not log you out. Please try again.", variant: "destructive"});
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   const updateUserProfile = async (data: Partial<AppUser>, newAvatarFile?: File | null) => {
@@ -242,20 +242,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         finalAvatarUrl = data.avatarUrl;
       }
       
-      // Prepare data for Firestore update, only include fields that are changing
-      const firestoreUpdateData: Partial<Omit<AppUser, 'uid' | 'email' | 'branch' | 'createdAt'>> & {updatedAt: any} = { 
+      const firestoreUpdateData: {
+        updatedAt: FieldValue;
+        name?: string;
+        year?: UserYear;
+        contactInfo?: { phone?: string | undefined };
+        avatarUrl?: string;
+      } = {
         updatedAt: serverTimestamp(),
       };
 
       if (data.name && data.name !== user.name) firestoreUpdateData.name = data.name;
-      if (data.year && data.year !== user.year) firestoreUpdateData.year = data.year; // Add year to update
-      if (data.contactInfo !== undefined) firestoreUpdateData.contactInfo = data.contactInfo as { phone?: string } | undefined;
+      if (data.year && data.year !== user.year) firestoreUpdateData.year = data.year;
+      
+      if (data.contactInfo !== undefined) { // Check if contactInfo object itself is part of the update
+        firestoreUpdateData.contactInfo = { phone: data.contactInfo.phone || undefined };
+      }
+      
       if (finalAvatarUrl && finalAvatarUrl !== user.avatarUrl) firestoreUpdateData.avatarUrl = finalAvatarUrl;
       
       const userDocRef = doc(db, "users", firebaseUser.uid);
       await updateDoc(userDocRef, firestoreUpdateData);
 
-      // Update Firebase Auth profile if name or avatar changed
       if ((firestoreUpdateData.name && firestoreUpdateData.name !== firebaseUser.displayName) || 
           (firestoreUpdateData.avatarUrl && firestoreUpdateData.avatarUrl !== firebaseUser.photoURL)) {
         await updateFirebaseProfile(firebaseUser, {
@@ -264,15 +272,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
       }
       
-      // Update local user state immediately
       setUser(prevUser => {
         if (!prevUser) return null;
-        return { 
-          ...prevUser, 
-          ...firestoreUpdateData, // Spread the changes
-           // Ensure timestamps are correctly formatted if they were serverTimestamps
-          updatedAt: new Date().toISOString() 
-        } as AppUser;
+        // Create a new object for the updated user state
+        const updatedAppUser = { ...prevUser };
+        if (firestoreUpdateData.name) updatedAppUser.name = firestoreUpdateData.name;
+        if (firestoreUpdateData.year) updatedAppUser.year = firestoreUpdateData.year;
+        if (firestoreUpdateData.contactInfo) updatedAppUser.contactInfo = firestoreUpdateData.contactInfo;
+        if (firestoreUpdateData.avatarUrl) updatedAppUser.avatarUrl = firestoreUpdateData.avatarUrl;
+        updatedAppUser.updatedAt = new Date().toISOString(); // Reflect update time
+        return updatedAppUser;
       });
       
       toast({ title: "Profile Updated", description: "Your information has been saved." });
@@ -299,7 +308,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await sendEmailVerification(firebaseUser);
       toast({ title: "Verification Email Sent", description: "Please check your inbox for the new verification link." });
-    } catch (error: any) {
+    } catch (error: any) { // Added opening brace for catch block
       console.error("Resend verification email error:", error);
       toast({ title: "Error Sending Email", description: error.message || "Could not resend verification email.", variant: "destructive" });
       throw error;
@@ -314,3 +323,4 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
+
