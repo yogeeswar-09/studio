@@ -2,7 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Mail, Users, BookOpenCheck } from "lucide-react"; // Added BookOpenCheck for Terms
+import { Mail, Users, BookOpenCheck, UserCheck } from "lucide-react"; // Added BookOpenCheck for Terms
 
 export default function AboutUsPage() {
   return (
@@ -29,15 +29,31 @@ export default function AboutUsPage() {
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl font-semibold text-accent flex items-center">
-                <Users className="mr-3 h-6 w-6" /> Our Team
+                <Users className="mr-3 h-6 w-6" /> Our Team - Code Crafters
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-foreground/90">
+            <CardContent className="space-y-4 text-foreground/90">
               <p>
-                CampusKart was proudly developed by <strong className="text-primary">Team - Code Crafters</strong> from the Department of Computer Science and Engineering (CSM - B) at MLRIT.
+                CampusKart was proudly developed by <strong className="text-primary">Team - Code Crafters</strong> from the Department of Computer Science and Engineering (CSM - B) at MLRIT. We are a group of passionate student developers dedicated to enhancing campus life through technology.
               </p>
-              <p>
-                We are a group of passionate students dedicated to leveraging technology to solve real-world problems and enhance campus life. This project is a testament to our collaborative spirit and commitment to our fellow students.
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { name: "Vennala", role: "Developer (CSM)" },
+                  { name: "Arjun", role: "Developer (CSM)" },
+                  { name: "Siri Chandana", role: "Developer (CSM)" },
+                  { name: "Yogeeswar", role: "Developer (CSM)" },
+                ].map((member) => (
+                  <div key={member.name} className="p-3 bg-muted/50 rounded-lg flex items-center space-x-3">
+                    <UserCheck className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="font-semibold">{member.name}</p>
+                      <p className="text-sm text-muted-foreground">{member.role}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-4">
+                This project is a testament to our collaborative spirit and commitment to our fellow students at MLRIT.
               </p>
             </CardContent>
           </Card>
