@@ -232,9 +232,9 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                 name="price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Price ($)</FormLabel>
+                    <FormLabel>Price (₹)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="e.g., 25.99" {...field} disabled={isLoading} />
+                      <Input type="number" step="0.01" placeholder="e.g., 1500.00" {...field} disabled={isLoading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

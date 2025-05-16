@@ -30,7 +30,7 @@ const ItemCardMini = ({ item }: { item: Listing }) => (
       <CardHeader className="p-3">
         <CardTitle className="text-sm font-semibold leading-tight truncate group-hover:text-primary">{item.title}</CardTitle>
         <CardDescription className="text-md text-primary font-bold mt-0.5">
-          ${item.price.toFixed(2)}
+          ₹{item.price.toFixed(2)}
         </CardDescription>
       </CardHeader>
     </Card>

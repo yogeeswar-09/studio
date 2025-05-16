@@ -1,3 +1,4 @@
+
 import type { Listing } from '@/types';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -35,7 +36,7 @@ export function ItemCard({ item }: ItemCardProps) {
           <Badge variant="secondary" className="whitespace-nowrap shrink-0">{item.category}</Badge>
     </div>
         <CardDescription className="text-xl font-bold text-primary mt-1">
-₹{item.price.toFixed(2)}
+          ₹{item.price.toFixed(2)}
         </CardDescription>
       </CardHeader>
       <CardContent className="p-4 pt-0 text-sm text-muted-foreground flex-grow">
