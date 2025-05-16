@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation"; // Added useSearchParams
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -12,7 +12,7 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
-  useSidebar, // If using collapsible states text for icons
+  useSidebar, 
 } from "@/components/ui/sidebar";
 import {
   LayoutGrid,
@@ -22,8 +22,8 @@ import {
   User,
   BookOpen,
   Laptop,
-  Calculator, // Added Calculator icon
-  FlaskConical, // Added FlaskConical icon for Lab Equipments
+  Calculator, 
+  FlaskConical, 
   Settings,
   ShoppingBag,
 } from "lucide-react";
@@ -44,31 +44,52 @@ const mainNavItems: NavItem[] = [
   { href: "/profile", label: "My Profile", icon: User },
 ];
 
+// Ensure href uses 'categories' (plural) for consistency
 const categoryNavItems: NavItem[] = [
-  { href: "/browse?category=Books", label: "Books", icon: BookOpen },
-  { href: "/browse?category=Electronics", label: "Electronics", icon: Laptop },
-  { href: "/browse?category=Calculators", label: "Calculators", icon: Calculator },
-  { href: "/browse?category=Lab%20Equipments", label: "Lab Equipments", icon: FlaskConical },
+  { href: "/browse?categories=Books", label: "Books", icon: BookOpen },
+  { href: "/browse?categories=Electronics", label: "Electronics", icon: Laptop },
+  { href: "/browse?categories=Calculators", label: "Calculators", icon: Calculator },
+  { href: "/browse?categories=Lab%20Equipments", label: "Lab Equipments", icon: FlaskConical },
 ];
 
 
 export function SidebarNav() {
   const pathname = usePathname();
-  const { state: sidebarState } = useSidebar(); // For tooltip logic based on collapsed state
+  const searchParams = useSearchParams(); // Get current search params
+  const { state: sidebarState } = useSidebar(); 
 
   const renderNavItem = (item: NavItem, index: number) => {
-    // For category links, check if the category query param matches
     let isActive = false;
-    if (item.href.includes('/browse?category=')) {
-        const urlParams = new URLSearchParams(item.href.split('?')[1]);
-        const categoryParam = urlParams.get('category');
-        
-        const currentUrlParams = new URLSearchParams(window.location.search);
-        const currentCategoryParam = currentUrlParams.get('category');
+    const itemUrl = new URL(item.href, "http://localhost"); // Base URL doesn't matter, just for parsing
 
-        isActive = pathname.startsWith("/browse") && categoryParam === currentCategoryParam;
+    if (itemUrl.pathname === "/browse" && itemUrl.searchParams.has("categories")) {
+      // This is a category link from SidebarNav (always a single category)
+      const itemCategory = itemUrl.searchParams.get("categories");
+      const activeCategoriesString = searchParams.get("categories"); // From current page URL
+
+      if (pathname.startsWith("/browse") && itemCategory && activeCategoriesString) {
+        // Check if the item's single category is present in the (potentially comma-separated) active categories
+        isActive = activeCategoriesString.split(',').includes(itemCategory);
+      } else if (pathname.startsWith("/browse") && itemCategory && !activeCategoriesString) {
+        // Link is for a category, but no categories are active in URL
+        isActive = false;
+      }
     } else {
-        isActive = item.matchExact ? pathname === item.href : pathname.startsWith(item.href);
+      // For non-category links or links without specific category params
+      isActive = item.matchExact ? pathname === item.href : pathname.startsWith(item.href) && (item.href.split('?')[0] === pathname);
+      if(item.href.startsWith(pathname) && item.href.includes("?") && !searchParams.toString().includes(item.href.split("?")[1])) {
+        // If main path matches, but query params differ, it's not active unless it's a category link handled above
+         if(!(itemUrl.pathname === "/browse" && itemUrl.searchParams.has("categories"))) {
+            isActive = false;
+         }
+      }
+      if (item.href === "/browse" && pathname === "/browse" && searchParams.toString() === "") {
+        isActive = true; // Special case for base /browse route
+      } else if (item.href === "/browse" && pathname === "/browse" && searchParams.toString() !== ""){
+        isActive = false; // if /browse has params, plain /browse link is not active
+      }
+
+
     }
     
     return (
