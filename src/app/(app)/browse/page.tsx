@@ -69,10 +69,14 @@ function BrowsePageContent() {
     let qConstraints: QueryConstraint[] = [where("status", "==", "available")];
 
     // Category filter
-    const categories = searchParams.get('categories')?.split(',');
-    if (categories && categories.length > 0) {
-      qConstraints.push(where('category', 'in', categories));
+    const categoriesParam = searchParams.get('categories');
+    if (categoriesParam) {
+        const categories = categoriesParam.split(',');
+        if (categories && categories.length > 0) {
+            qConstraints.push(where('category', 'in', categories));
+        }
     }
+    
 
     // Price filter
     const minPrice = parseFloat(searchParams.get('minPrice') || '0');
@@ -85,13 +89,13 @@ function BrowsePageContent() {
     }
     
     // Sorting (ensure correct field and direction)
-    let currentSortBy = searchParams.get('sortBy') || sortBy;
-    if (currentSortBy === 'price_asc') qConstraints.push(orderBy('price', 'asc'));
-    else if (currentSortBy === 'price_desc') qConstraints.push(orderBy('price', 'desc'));
-    else if (currentSortBy === 'createdAt_asc') qConstraints.push(orderBy('createdAt', 'asc'));
+    // Use the sortBy state variable which is synced from URL params
+    if (sortBy === 'price_asc') qConstraints.push(orderBy('price', 'asc'));
+    else if (sortBy === 'price_desc') qConstraints.push(orderBy('price', 'desc'));
+    else if (sortBy === 'createdAt_asc') qConstraints.push(orderBy('createdAt', 'asc'));
     else qConstraints.push(orderBy('createdAt', 'desc')); // Default: createdAt_desc
 
-    qConstraints.push(limit(ITEMS_PER_PAGE * 2)); // Fetch more initially for client-side search, adjust as needed
+    qConstraints.push(limit(ITEMS_PER_PAGE * 2)); // Fetch more initially for client-side search
 
     if (loadMore && lastVisible) {
       qConstraints.push(startAfter(lastVisible));
@@ -107,7 +111,7 @@ function BrowsePageContent() {
         createdAt: (doc.data().createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
       } as Listing));
 
-      if (querySnapshot.docs.length < (ITEMS_PER_PAGE*2)) { // If less than fetched limit, no more items
+      if (querySnapshot.docs.length < (ITEMS_PER_PAGE*2)) { 
         setHasMore(false);
       }
       if (querySnapshot.docs.length > 0) {
@@ -115,7 +119,7 @@ function BrowsePageContent() {
       }
       
       setAllFetchedListings(prev => loadMore ? [...prev, ...newItems] : newItems);
-      setTotalServerResults(prev => loadMore ? prev + newItems.length : newItems.length); // This is not total, but current fetched
+      setTotalServerResults(prev => loadMore ? prev + newItems.length : newItems.length); 
     
     } catch (error) {
       console.error("Error fetching listings: ", error);
@@ -124,27 +128,26 @@ function BrowsePageContent() {
       setIsLoading(false);
       setIsFetchingMore(false);
     }
-  }, [searchParams, sortBy, lastVisible, toast]);
+  }, [searchParams, sortBy, lastVisible, toast]); // sortBy (state) is now a dep, which is fine as it's synced from searchParams
 
 
   useEffect(() => {
     fetchListings(false, 1); // Initial fetch or when major filters (URL-driven) change
-  }, [fetchListings]); // sortBy is now also in URL, handled by searchParams change inside fetchListings
+  }, [fetchListings]);
 
 
   // Client-side filtering for search term
   useEffect(() => {
     let tempFiltered = [...allFetchedListings];
-    const currentSearchTerm = searchParams.get('q') || searchTerm;
-
-    if (currentSearchTerm) {
+    // searchTerm state is the source of truth, synced from URL's 'q' param by another useEffect
+    if (searchTerm) {
       tempFiltered = tempFiltered.filter(item =>
-        item.title.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
-        item.description.toLowerCase().includes(currentSearchTerm.toLowerCase())
+        (item.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.description || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     setClientFilteredListings(tempFiltered);
-  }, [allFetchedListings, searchTerm, searchParams]);
+  }, [allFetchedListings, searchTerm]); // Depends only on allFetchedListings and the derived searchTerm state
 
 
   // Pagination logic based on client-filtered listings
@@ -153,15 +156,14 @@ function BrowsePageContent() {
     const end = start + ITEMS_PER_PAGE;
     setPaginatedListings(clientFilteredListings.slice(start, end));
 
+    // Auto-fetch logic (can be complex and is currently minimal)
     // If current page has too few items and there are more on server, and we haven't hit the true end
     if (clientFilteredListings.slice(start, end).length < ITEMS_PER_PAGE && 
-        clientFilteredListings.length < totalServerResults && // this check is problematic
+        allFetchedListings.length < totalServerResults && 
         hasMore && !isFetchingMore && !isLoading &&
-        end > allFetchedListings.length // if we are at the end of client search filtered but there's more on server
+        end > allFetchedListings.length 
        ) {
-      // This logic to auto-fetch more if client-side search reduces items needs careful thought
-      // For simplicity, we might rely on user clicking "load more" or navigating pages
-      // Or, if client search yields few results, fetch more if server `hasMore` is true.
+      // This condition is tricky. For now, relying on explicit "Load More" or page navigation.
     }
 
   }, [clientFilteredListings, currentPage, allFetchedListings.length, hasMore, isFetchingMore, isLoading, totalServerResults]);
@@ -169,14 +171,13 @@ function BrowsePageContent() {
   const totalPages = Math.ceil(clientFilteredListings.length / ITEMS_PER_PAGE);
 
   const handlePageChange = (newPage: number) => {
-    if (newPage < 1 || (newPage > totalPages && !hasMore)) return; // Prevent going beyond known pages if no more server data
+    if (newPage < 1 || (newPage > totalPages && !hasMore && clientFilteredListings.length <= (newPage -1) * ITEMS_PER_PAGE )) return; 
 
     setCurrentPage(newPage);
     const current = new URLSearchParams(Array.from(searchParams.entries()));
     current.set('page', newPage.toString());
     router.push(`${pathname}?${current.toString()}`, { scroll: false });
 
-    // If moving to a page that needs more data from the server
     const itemsNeeded = newPage * ITEMS_PER_PAGE;
     if (itemsNeeded > allFetchedListings.length && hasMore && !isFetchingMore) {
       fetchListings(true, newPage);
@@ -186,18 +187,19 @@ function BrowsePageContent() {
   const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const current = new URLSearchParams(Array.from(searchParams.entries()));
-    if (searchTerm) {
+    if (searchTerm) { // searchTerm state from input field
       current.set('q', searchTerm);
     } else {
       current.delete('q');
     }
     current.set('page', '1'); // Reset page to 1 on new search
     router.push(`${pathname}?${current.toString()}`);
-    // fetchListings will be triggered by searchParams change
+    // fetchListings will be triggered by searchParams change (which updates local searchTerm state and sortBy state)
   };
 
   const handleSortChange = (newSortBy: string) => {
-    setSortBy(newSortBy);
+    // setSearchTerm is already updated by its own useEffect from searchParams
+    // setSortBy(newSortBy); // Local state update is handled by useEffect from searchParams
     const current = new URLSearchParams(Array.from(searchParams.entries()));
     current.set('sortBy', newSortBy);
     current.set('page', '1'); // Reset page on sort change
@@ -219,8 +221,8 @@ function BrowsePageContent() {
               <Input
                 type="search"
                 placeholder="Search (titles & descriptions)..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchTerm} // Controlled input
+                onChange={(e) => setSearchTerm(e.target.value)} // Update local state on type
                 className="pl-10 w-full"
               />
             </div>
@@ -245,7 +247,6 @@ function BrowsePageContent() {
           <p className="text-sm text-muted-foreground">
             Showing {paginatedListings.length > 0 ? ((currentPage - 1) * ITEMS_PER_PAGE) + 1 : 0}-
             {Math.min(currentPage * ITEMS_PER_PAGE, clientFilteredListings.length)} of {clientFilteredListings.length} results
-            {/* Server side count is more complex: {totalServerResults > 0 ? ` (approx. ${totalServerResults} total)`: ''} */}
           </p>
         </div>
 
@@ -283,21 +284,23 @@ function BrowsePageContent() {
             <p className="text-muted-foreground">Try adjusting your search or filters.</p>
           </div>
         )}
-
-        {(isFetchingMore || (totalPages > 1 && currentPage < totalPages) || (hasMore && clientFilteredListings.length === 0 && !isLoading)) && (
+        
+        {/* "Load More" button logic: appears if there are more pages of clientFilteredListings OR if server has more and current client list is short */}
+        {((totalPages > 1 && currentPage < totalPages) || (hasMore && clientFilteredListings.length < ITEMS_PER_PAGE && clientFilteredListings.length < totalServerResults)) && (
           <div className="mt-8 flex justify-center">
             <Button
               variant="outline"
               onClick={() => handlePageChange(currentPage + 1)}
-              disabled={isFetchingMore || !hasMore}
+              disabled={isFetchingMore || (!hasMore && currentPage >= totalPages)}
             >
               {isFetchingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-2 h-4 w-4" />}
-              {isFetchingMore ? 'Loading...' : 'Load More'}
+              {isFetchingMore ? 'Loading...' : (currentPage < totalPages || hasMore ? 'Load More' : 'No More Items')}
             </Button>
           </div>
         )}
 
-        {totalPages > 1 && !isFetchingMore && (
+
+        {clientFilteredListings.length > 0 && totalPages > 1 && !isFetchingMore && (
           <div className="mt-8 flex justify-center items-center space-x-2">
             <Button
               variant="outline"
@@ -307,7 +310,6 @@ function BrowsePageContent() {
               <ArrowLeft className="mr-2 h-4 w-4" /> Previous
             </Button>
             {Array.from({ length: totalPages }, (_, i) => i + 1)
-              // Limit number of page buttons shown for brevity
               .filter(page => page === 1 || page === totalPages || (page >= currentPage - 2 && page <= currentPage + 2))
               .map((page, index, arr) => (
                 <React.Fragment key={page}>
@@ -325,7 +327,7 @@ function BrowsePageContent() {
             <Button
               variant="outline"
               onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages || isFetchingMore || !hasMore}
+              disabled={currentPage === totalPages || isFetchingMore || (!hasMore && currentPage >= totalPages) }
             >
               Next <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
