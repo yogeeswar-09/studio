@@ -3,15 +3,17 @@
 
 import { AppLogo } from "@/components/common/AppLogo";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress"; // Added Progress import
 import { useAuth } from "@/hooks/use-auth";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight } from "lucide-react"; // Removed Loader2
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react"; // Added useState
 
 export default function LandingPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const [progress, setProgress] = useState(0); // State for progress bar
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -19,32 +21,52 @@ export default function LandingPage() {
     }
   }, [user, isLoading, router]);
 
+  // Effect to animate progress bar during loading
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isLoading) {
+      setProgress(10); // Start with a small initial progress
+      let currentProgress = 10;
+      timer = setInterval(() => {
+        currentProgress += Math.floor(Math.random() * 10) + 5; // Increment progress
+        if (currentProgress >= 95) {
+          setProgress(95); // Cap progress before actual load finishes
+          clearInterval(timer);
+        } else {
+          setProgress(currentProgress);
+        }
+      }, 200); // Adjust interval for speed
+    } else {
+      setProgress(100); // Ensure it fills if loading finishes quickly
+    }
+    return () => {
+      clearInterval(timer);
+    };
+  }, [isLoading]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-center p-6 overflow-hidden">
         <div className="mb-12 animate-logo-pulse animate-shining-glow"> {/* Increased bottom margin */}
           <AppLogo iconSize={80} textSize="text-6xl" /> {/* Increased logo size */}
         </div>
-        <Loader2 className="h-12 w-12 animate-spin text-primary mb-6 animate-shining-glow" /> {/* Larger loader, primary color, glow */}
-        <p className="text-xl font-semibold text-primary-foreground animate-text-focus-in animate-neon-text-glow">
-          Initializing CampusKart...
-        </p>
+        {/* Removed Loader2 and text, Added Progress bar */}
+        <Progress value={progress} className="w-1/2 md:w-1/3 mx-auto h-2.5 bg-primary/30 [&>div]:bg-primary" />
+        {/* Optional: A very subtle loading text below the progress bar if desired */}
+        {/* <p className="text-sm font-medium text-primary-foreground/70 mt-4">Loading...</p> */}
       </div>
     );
   }
 
   if (user) { 
     // Fallback loading screen if user is defined but redirect hasn't occurred
-    // Can be simpler or match the main splash
     return (
        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-center p-6 overflow-hidden">
         <div className="mb-12 animate-logo-pulse animate-shining-glow">
           <AppLogo iconSize={80} textSize="text-6xl" />
         </div>
-        <Loader2 className="h-12 w-12 animate-spin text-primary mb-6 animate-shining-glow" />
-        <p className="text-xl font-semibold text-primary-foreground animate-text-focus-in animate-neon-text-glow">
-          Redirecting to dashboard...
-        </p>
+        {/* Consistent loading indicator for this state too */}
+        <Progress value={progress >= 95 ? 95 : progress} className="w-1/2 md:w-1/3 mx-auto h-2.5 bg-primary/30 [&>div]:bg-primary" />
       </div>
     );
   }
