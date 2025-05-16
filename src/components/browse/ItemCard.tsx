@@ -5,21 +5,21 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle } from 'lucide-react'; // Removed ArrowRight
+import { MessageCircle, ShoppingBag } from 'lucide-react';
 
 interface ItemCardProps {
   item: Listing;
 }
 
 export function ItemCard({ item }: ItemCardProps) {
-  // Ensure item and its properties are defined before accessing
   const title = item?.title || 'Untitled Listing';
   const description = item?.description || 'No description available.';
   const price = item?.price || 0;
   const category = item?.category || 'Other';
-  const imageUrl = item?.imageUrl || 'https://placehold.co/600x400.png'; // Default placeholder
+  const imageUrl = item?.imageUrl || 'https://placehold.co/600x400.png';
   const sellerId = item?.sellerId;
   const itemId = item?.id;
+  const status = item?.status;
 
   return (
     <Card className="overflow-hidden h-full flex flex-col group transition-all duration-300 ease-in-out hover:shadow-xl hover:border-primary">
@@ -36,10 +36,14 @@ export function ItemCard({ item }: ItemCardProps) {
               (e.target as HTMLImageElement).src = 'https://placehold.co/600x400.png';
             }}
           />
+          {status === 'sold' && (
+            <div className="absolute top-2 right-2 bg-destructive text-destructive-foreground px-2 py-1 text-xs font-semibold rounded-md shadow flex items-center">
+              <ShoppingBag className="mr-1 h-3 w-3" /> SOLD
+            </div>
+          )}
         </div>
         <CardHeader className="p-4">
           <div className="flex justify-between items-start gap-2">
-            {/* CardTitle itself is part of the main link now */}
             <CardTitle className="text-lg font-semibold leading-tight group-hover:text-primary">
               {title}
             </CardTitle>
@@ -53,12 +57,13 @@ export function ItemCard({ item }: ItemCardProps) {
           <p className="line-clamp-3">{description}</p>
         </CardContent>
       </Link>
-      {/* Footer is now outside the main card link if it contains actions not related to navigation */}
       <CardFooter className="p-4 pt-0 mt-auto flex flex-col sm:flex-row sm:justify-end">
-        {/* Removed View Details Button */}
-        {sellerId && itemId && item.status !== 'sold' ? (
+        {sellerId && itemId ? (
           <Link href={`/chat?newChatWith=${sellerId}&itemId=${itemId}`} className="w-full sm:w-auto" passHref legacyBehavior>
-            <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+            <Button 
+              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+              disabled={status === 'sold'}
+            >
                <MessageCircle className="mr-2 h-4 w-4" /> Chat
             </Button>
           </Link>

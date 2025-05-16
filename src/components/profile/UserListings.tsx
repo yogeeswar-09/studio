@@ -6,7 +6,7 @@ import type { Listing } from '@/types';
 import { useAuth } from '@/hooks/use-auth';
 import { ItemCard } from '@/components/browse/ItemCard';
 import { Button } from '@/components/ui/button';
-import { Edit3, PlusCircle, Trash2, Frown, Loader2 } from 'lucide-react';
+import { Edit3, PlusCircle, Trash2, Frown, Loader2, ShoppingBag } from 'lucide-react'; // Added ShoppingBag for sold
 import Link from 'next/link';
 import {
   AlertDialog,
@@ -21,15 +21,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
-import { db } from '@/lib/firebase'; // Removed 'storage' import
-import { collection, query, where, orderBy, getDocs, deleteDoc, doc, Timestamp } from 'firebase/firestore';
-// Firebase storage 'ref' and 'deleteObject' are removed as Cloudinary is used.
+import { db } from '@/lib/firebase';
+import { collection, query, where, orderBy, getDocs, deleteDoc, doc, Timestamp, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 export function UserListings() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [userListings, setUserListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null); // To track which item is being updated
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -63,19 +63,35 @@ export function UserListings() {
 
   const handleDeleteListing = async (listingToDelete: Listing) => {
     try {
-      // Delete Firestore document
       await deleteDoc(doc(db, "listings", listingToDelete.id));
-
-      // Note: Deleting the image from Cloudinary would typically require a backend (server-side) operation
-      // using Cloudinary's Admin API and your API Secret.
-      // This frontend-only implementation does not delete the image from Cloudinary.
       console.log(`Listing ${listingToDelete.id} deleted. Associated image ${listingToDelete.imageUrl} on Cloudinary is not deleted from client-side.`);
-
       setUserListings(prev => prev.filter(item => item.id !== listingToDelete.id));
       toast({ title: "Listing Deleted", description: `"${listingToDelete.title}" has been removed from Firestore.` });
     } catch (error: any) {
       console.error("Error deleting listing:", error);
       toast({ title: "Deletion Failed", description: error.message || "Could not delete the listing.", variant: "destructive" });
+    }
+  };
+
+  const handleMarkAsSold = async (listingId: string) => {
+    setIsUpdatingStatus(listingId);
+    try {
+      const listingRef = doc(db, "listings", listingId);
+      await updateDoc(listingRef, {
+        status: 'sold',
+        updatedAt: serverTimestamp()
+      });
+      setUserListings(prevListings =>
+        prevListings.map(item =>
+          item.id === listingId ? { ...item, status: 'sold', updatedAt: new Date().toISOString() } : item
+        )
+      );
+      toast({ title: "Success", description: "Listing marked as sold." });
+    } catch (error: any) {
+      console.error("Error marking as sold:", error);
+      toast({ title: "Update Failed", description: error.message || "Could not mark listing as sold.", variant: "destructive" });
+    } finally {
+      setIsUpdatingStatus(null);
     }
   };
   
@@ -107,11 +123,10 @@ export function UserListings() {
     );
   }
 
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-semibold text-foreground">My Active Listings ({userListings.length})</h2>
+        <h2 className="text-2xl font-semibold text-foreground">My Active Listings ({userListings.filter(l => l.status === 'available').length})</h2>
         <Link href="/create-listing">
           <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
             <PlusCircle className="mr-2 h-5 w-5" /> List a New Item
@@ -124,16 +139,32 @@ export function UserListings() {
           {userListings.map(item => (
             <div key={item.id} className="relative group">
               <ItemCard item={item} />
-              <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+                {item.status === 'available' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-background/90 hover:bg-green-500/20 shadow-md text-xs px-2 py-1 h-auto"
+                    onClick={() => handleMarkAsSold(item.id)}
+                    disabled={isUpdatingStatus === item.id}
+                  >
+                    {isUpdatingStatus === item.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <ShoppingBag className="h-3 w-3 mr-1" /> 
+                    )}
+                    Mark Sold
+                  </Button>
+                )}
                 <Link href={`/profile?editListing=${item.id}`}>
-                  <Button variant="outline" size="icon" className="bg-background/80 hover:bg-background shadow-md">
-                    <Edit3 className="h-4 w-4 text-primary" />
+                  <Button variant="outline" size="sm" className="bg-background/90 hover:bg-background shadow-md text-xs px-2 py-1 h-auto w-full">
+                    <Edit3 className="h-3 w-3 mr-1" /> Edit
                   </Button>
                 </Link>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="icon" className="bg-destructive/80 hover:bg-destructive text-destructive-foreground shadow-md">
-                      <Trash2 className="h-4 w-4" />
+                    <Button variant="destructive" size="sm" className="bg-destructive/80 hover:bg-destructive text-destructive-foreground shadow-md text-xs px-2 py-1 h-auto w-full">
+                      <Trash2 className="h-3 w-3 mr-1" /> Delete
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>

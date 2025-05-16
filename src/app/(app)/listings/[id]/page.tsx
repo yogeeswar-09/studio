@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, MessageCircle, Edit3, Loader2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Edit3, Loader2, AlertTriangle, ShoppingBag } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -58,7 +58,7 @@ export default function ListingDetailPage() {
           } else {
             console.log("No such listing document!");
             setListing(null); 
-            router.push('/browse?error=notfound');
+            router.push('/listings?error=notfound'); // Changed from /browse
           }
         } catch (error) {
           console.error("Error fetching listing details:", error);
@@ -114,7 +114,7 @@ export default function ListingDetailPage() {
         <AlertTriangle className="mx-auto h-16 w-16 text-destructive mb-4" />
         <h3 className="text-xl font-semibold text-foreground mb-2">Listing not found</h3>
         <p className="text-muted-foreground">This item may have been removed or the link is incorrect.</p>
-        <Button onClick={() => router.push('/browse')} className="mt-6">Browse Other Items</Button>
+        <Button onClick={() => router.push('/listings')} className="mt-6">Browse Other Items</Button> {/* Changed from /browse */}
       </div>
     );
   }
@@ -146,15 +146,13 @@ export default function ListingDetailPage() {
               priority
               data-ai-hint={`${listing.category.toLowerCase()} detail view`}
             />
+             {listing.status === 'sold' && (
+                <div className="absolute top-3 right-3 bg-destructive/90 text-destructive-foreground py-1.5 px-4 rounded-md text-sm font-semibold shadow-lg flex items-center">
+                    <ShoppingBag className="mr-2 h-4 w-4" /> SOLD
+                </div>
+            )}
           </div>
           {/* Placeholder for more images if you implement a gallery */}
-          {/* <div className="grid grid-cols-4 gap-2">
-            {[listing.imageUrl, "https://placehold.co/100x100.png", "https://placehold.co/100x100.png", "https://placehold.co/100x100.png"].map((img, i) => (
-              <div key={i} className={`relative aspect-square rounded overflow-hidden border-2 ${i === 0 ? 'border-primary' : 'border-transparent'}`}>
-                <Image src={img} alt={`Thumbnail ${i+1}`} fill className="object-cover cursor-pointer hover:opacity-80 transition-opacity" data-ai-hint="product thumbnail"/>
-              </div>
-            ))}
-          </div> */}
         </div>
 
         {/* Details Section */}
@@ -169,9 +167,6 @@ export default function ListingDetailPage() {
                 ₹{listing.price.toFixed(2)}
               </CardDescription>
               <p className="text-xs text-muted-foreground mt-1">Listed {timeAgo}</p>
-               {listing.status === 'sold' && (
-                <Badge variant="destructive" className="mt-2 text-base px-3 py-1">SOLD</Badge>
-              )}
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground leading-relaxed mb-6">{listing.description}</p>
@@ -194,22 +189,40 @@ export default function ListingDetailPage() {
 
               <div className="mt-8 flex flex-col gap-3">
                 {currentUser?.uid === seller?.uid ? (
-                  <Link href={`/profile?editListing=${listing.id}`} passHref legacyBehavior>
-                    <Button size="lg" variant="outline" className="w-full text-base border-primary text-primary hover:bg-primary/10">
-                       <Edit3 className="mr-2 h-5 w-5" /> Edit Your Listing
-                    </Button>
-                  </Link>
+                  <>
+                    <Link href={`/profile?editListing=${listing.id}`} passHref legacyBehavior>
+                      <Button size="lg" variant="outline" className="w-full text-base border-primary text-primary hover:bg-primary/10">
+                         <Edit3 className="mr-2 h-5 w-5" /> Edit Your Listing
+                      </Button>
+                    </Link>
+                    {listing.status === 'available' && (
+                       <Button 
+                          size="lg" 
+                          variant="default" // Or a different variant like "secondary"
+                          className="w-full text-base bg-green-600 hover:bg-green-700 text-white"
+                          onClick={async () => {
+                            // This is a simplified client-side update. Ideally, this action comes from UserListings.tsx or a dedicated context/hook for updates.
+                            // For now, this button would visually suggest it's sold but doesn't update DB from here.
+                            // The actual "Mark as Sold" logic is in UserListings.tsx
+                            toast({ title: "Action Needed", description: "Please mark as sold from your profile's 'My Listings' section."});
+                          }}
+                        >
+                         <ShoppingBag className="mr-2 h-5 w-5" /> Mark as Sold (From Profile)
+                       </Button>
+                    )}
+                  </>
                 ) : listing.status !== 'sold' ? (
                   <>
                     <Link href={`/chat?newChatWith=${listing.sellerId}&itemId=${listing.id}`} passHref legacyBehavior>
-                      <Button size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-base">
+                      <Button size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-base" disabled={listing.status === 'sold'}>
                         <MessageCircle className="mr-2 h-5 w-5" /> Chat with Seller
                       </Button>
                     </Link>
-                    {/* Add to cart/buy now can be future features */}
                   </>
                 ) : (
-                   <p className="text-center text-muted-foreground font-semibold">This item has been sold.</p>
+                   <p className="text-center text-muted-foreground font-semibold p-3 bg-muted rounded-md">
+                    <ShoppingBag className="inline-block mr-2 h-5 w-5" /> This item has been sold.
+                   </p>
                 )}
               </div>
             </CardContent>
@@ -218,4 +231,11 @@ export default function ListingDetailPage() {
       </div>
     </div>
   );
+}
+
+// Helper function for toast, can be removed if not used here and UserListings already handles it.
+import { useToast } from '@/hooks/use-toast';
+function toast(options: { title: string, description: string, variant?: "default" | "destructive" }) {
+  const { toast: showToast } = useToast(); // This is a bit awkward here.
+  showToast(options);
 }
