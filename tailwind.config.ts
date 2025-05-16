@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -97,12 +98,39 @@ export default {
             opacity: '1',
           },
         },
+        'shining-glow': {
+          '0%, 100%': { 
+            filter: 'drop-shadow(0 0 8px hsl(var(--primary) / 0.7)) drop-shadow(0 0 15px hsl(var(--primary) / 0.5))', 
+            opacity: '0.8' 
+          },
+          '50%': { 
+            filter: 'drop-shadow(0 0 15px hsl(var(--primary) / 1)) drop-shadow(0 0 30px hsl(var(--primary) / 0.7))', 
+            opacity: '1' 
+          },
+        },
+        'neon-text-glow': {
+          '0%, 100%': {
+            textShadow: `0 0 5px hsl(var(--primary-foreground) / 0.7), 
+                         0 0 10px hsl(var(--primary) / 0.6), 
+                         0 0 15px hsl(var(--primary) / 0.4)`,
+            opacity: '0.85'
+          },
+          '50%': {
+            textShadow: `0 0 10px hsl(var(--primary-foreground) / 1), 
+                         0 0 20px hsl(var(--primary) / 0.9), 
+                         0 0 35px hsl(var(--primary) / 0.6),
+                         0 0 50px hsl(var(--primary) / 0.3)`,
+            opacity: '1'
+          },
+        }
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
         'logo-pulse': 'logo-pulse 2.5s ease-in-out infinite',
-        'text-focus-in': 'text-focus-in 0.8s cubic-bezier(0.550, 0.085, 0.680, 0.530) 0.2s both', // Added delay
+        'text-focus-in': 'text-focus-in 0.8s cubic-bezier(0.550, 0.085, 0.680, 0.530) 0.2s both',
+        'shining-glow': 'shining-glow 2.2s ease-in-out infinite',
+        'neon-text-glow': 'neon-text-glow 2.2s ease-in-out infinite',
   		}
   	}
   },
