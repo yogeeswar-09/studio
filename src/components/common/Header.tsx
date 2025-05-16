@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { LogOut, User as UserIcon, Settings, LayoutGrid, SidebarOpen } from "lucide-react";
 import Link from "next/link";
 import { useSidebar } from "@/components/ui/sidebar"; 
+import { ThemeToggle } from "./ThemeToggle"; // Added import
 
 export function Header() {
   const { user, logout } = useAuth();
@@ -44,7 +45,8 @@ export function Header() {
           </div>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2"> {/* Adjusted gap for ThemeToggle */}
+          <ThemeToggle /> {/* Added ThemeToggle component */}
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
