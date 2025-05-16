@@ -42,6 +42,7 @@ const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESE
 
 async function uploadToCloudinary(file: File): Promise<string> {
   if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+    // This check is also present at the start of onSubmit for early exit
     throw new Error("Cloudinary environment variables not set.");
   }
   const formData = new FormData();
@@ -68,6 +69,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false); // Specific state for image upload
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
 
@@ -130,26 +132,36 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
       toast({ title: "Authentication Error", description: "You must be logged in.", variant: "destructive" });
       return;
     }
+
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+      toast({ title: "Configuration Error", description: "Cloudinary is not configured for image uploads. Please contact support.", variant: "destructive" });
+      console.error("Cloudinary environment variables NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME or NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET are not set.");
+      return;
+    }
+
     if (!imageFile && !data.imageUrl) {
         form.setError("imageUrl", { type: "manual", message: "Please upload an image or provide an image URL."});
         toast({ title: "Image Required", description: "Please upload an image or provide an image URL for your listing.", variant: "destructive" });
         return;
     }
-    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-      toast({ title: "Configuration Error", description: "Cloudinary is not configured. Please contact support.", variant: "destructive" });
-      console.error("Cloudinary environment variables NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME or NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET are not set.");
-      return;
-    }
-
+    
     setIsLoading(true);
+    let finalImageUrl = data.imageUrl;
 
     try {
-      let finalImageUrl = data.imageUrl;
-
       if (imageFile) {
-        finalImageUrl = await uploadToCloudinary(imageFile);
+        setIsUploadingImage(true); // Start specific image upload indication
+        try {
+          finalImageUrl = await uploadToCloudinary(imageFile);
+        } catch (uploadError: any) {
+          toast({ title: "Image Upload Failed", description: uploadError.message || "Could not upload the image.", variant: "destructive" });
+          setIsLoading(false);
+          setIsUploadingImage(false);
+          return; // Stop form submission if image upload fails
+        } finally {
+          setIsUploadingImage(false); // End specific image upload indication
+        }
       }
-      // If only data.imageUrl is provided, we use that. No Cloudinary deletion logic for old URLs here as it's complex for external URLs.
 
       const listingData: Omit<Listing, 'id' | 'seller' | 'createdAt' | 'updatedAt'> & { createdAt?: any, updatedAt?: any } = {
         title: data.title,
@@ -166,7 +178,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
       if (listing) { 
         listingData.updatedAt = serverTimestamp();
         const listingRef = doc(db, "listings", listing.id);
-        await updateDoc(listingRef, listingData as Partial<Listing>); // Cast to Partial as some fields might not be updated
+        await updateDoc(listingRef, listingData as Partial<Listing>); 
         toast({ title: "Listing Updated!", description: `"${data.title}" has been updated.` });
       } else { 
         listingData.createdAt = serverTimestamp();
@@ -176,16 +188,17 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
         toast({ title: "Listing Created!", description: `"${data.title}" has been listed.` });
       }
 
-      setIsLoading(false);
       if (onSubmitSuccess) {
         onSubmitSuccess(listingId!);
       } else {
         router.push(`/listings/${listingId}`);
       }
     } catch (error: any) {
-      setIsLoading(false);
       console.error("Error submitting listing:", error);
       toast({ title: "Submission Failed", description: error.message || "Could not save the listing.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+      // isUploadingImage should already be false here if it was set
     }
   };
 
@@ -205,7 +218,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                 <FormItem>
                   <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Slightly used Python textbook" {...field} disabled={isLoading} />
+                    <Input placeholder="e.g., Slightly used Python textbook" {...field} disabled={isLoading || isUploadingImage} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -219,7 +232,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Describe your item in detail..." {...field} rows={5} disabled={isLoading} />
+                    <Textarea placeholder="Describe your item in detail..." {...field} rows={5} disabled={isLoading || isUploadingImage} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -234,7 +247,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                   <FormItem>
                     <FormLabel>Price (₹)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="e.g., 1500.00" {...field} disabled={isLoading} />
+                      <Input type="number" step="0.01" placeholder="e.g., 1500.00" {...field} disabled={isLoading || isUploadingImage} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -247,7 +260,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} disabled={isLoading}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} disabled={isLoading || isUploadingImage}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a category" />
@@ -270,16 +283,21 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                 <FormControl>
                 <div>
                     <Label 
-                    htmlFor="image-upload"
-                    className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted/75 transition-colors"
+                      htmlFor="image-upload"
+                      className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg  bg-muted/50  transition-colors ${isUploadingImage ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-muted/75'}`}
                     >
-                    {imagePreview ? (
+                    {isUploadingImage ? (
+                      <div className="flex flex-col items-center justify-center text-muted-foreground">
+                        <Loader2 className="w-10 h-10 mb-3 animate-spin text-primary" />
+                        <p className="text-sm">Uploading image...</p>
+                      </div>
+                    ) : imagePreview ? (
                         <Image src={imagePreview} alt="Preview" width={180} height={180} className="object-contain max-h-44 rounded-md" data-ai-hint="uploaded item"/>
                     ) : (
                         <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
-                        <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                        <p className="text-xs text-muted-foreground">PNG, JPG, GIF (MAX. 5MB)</p>
+                          <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
+                          <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                          <p className="text-xs text-muted-foreground">PNG, JPG, GIF (MAX. 5MB)</p>
                         </div>
                     )}
                     <Input 
@@ -288,7 +306,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                         className="hidden" 
                         accept="image/*"
                         onChange={handleImageUpload}
-                        disabled={isLoading}
+                        disabled={isLoading || isUploadingImage} // Disable during overall loading or specific image upload
                     />
                     </Label>
                     <FormField
@@ -304,7 +322,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                                   field.onChange(e.target.value);
                                   handlePastedUrl(e.target.value);
                                 }}
-                                disabled={isLoading || !!imageFile} 
+                                disabled={isLoading || !!imageFile || isUploadingImage} 
                             />
                         )}
                     />
@@ -314,8 +332,8 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                 <FormMessage>{form.formState.errors.imageUrl?.message}</FormMessage>
             </FormItem>
 
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-lg py-3" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-lg py-3" disabled={isLoading || isUploadingImage}>
+              {(isLoading || isUploadingImage) && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
               {listing ? 'Update Listing' : 'Create Listing'}
             </Button>
           </form>
@@ -324,3 +342,5 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
     </Card>
   );
 }
+
+    
