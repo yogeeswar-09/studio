@@ -54,7 +54,7 @@ export default function AppLayout({
             {/* Logo visible when sidebar expanded, icon-only could show smaller version or just icon */}
             <div className="flex items-center justify-between">
                <AppLogo className="group-data-[collapsible=icon]:hidden" />
-               <div className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full">
+               <div className="hidden group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full"> {/* Added 'hidden' here */}
                  <CampusKartIconLogoShort /> {/* Updated to use new short logo */}
                </div>
                <SidebarTrigger className="hidden group-data-[collapsible=icon]:hidden md:flex" />
