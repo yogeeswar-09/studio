@@ -14,6 +14,16 @@ const openSans = Open_Sans({
 export const metadata: Metadata = {
   title: 'CampusKart - Student Marketplace',
   description: 'Buy and sell items within your campus community.',
+  icons: {
+    icon: '/icon.png', // General purpose icon (e.g., 192x192 or 512x512)
+    shortcut: '/favicon.ico', // Traditional browser favicon (e.g., 32x32 or 16x16)
+    apple: '/apple-icon.png', // Apple touch icon (e.g., 180x180)
+    // You can also add other icons if needed, for example:
+    // other: [
+    //   { rel: 'android-chrome-192x192', url: '/android-chrome-192x192.png' },
+    //   { rel: 'android-chrome-512x512', url: '/android-chrome-512x512.png' },
+    // ],
+  },
 };
 
 export default function RootLayout({
