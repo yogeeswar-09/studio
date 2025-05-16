@@ -23,7 +23,7 @@ const ItemCardMini = ({ item }: { item: Listing }) => (
           alt={item.title}
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          className="object-cover group-hover:scale-105 transition-transform duration-300"
+          className="object-contain group-hover:scale-105 transition-transform duration-300" // Changed from object-cover to object-contain
           data-ai-hint={`${item.category.toLowerCase()} item`}
         />
       </div>
@@ -84,20 +84,9 @@ export default function DashboardPage() {
         <p className="text-lg opacity-90">Ready to find your next great deal or list something new?</p>
       </div>
 
-      <div className="grid md:grid-cols-1 gap-8 mb-12"> {/* Changed to md:grid-cols-1 as browse is removed */}
-        {/* Removed Browse Items Card */}
-        {/* <Link href="/browse" className="block">
-          <Card className="hover:shadow-lg transition-shadow p-6 flex items-center gap-4 bg-card hover:border-primary">
-            <Search className="w-12 h-12 text-primary" />
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground">Browse Items</h2>
-              <p className="text-muted-foreground">Explore listings from fellow students.</p>
-            </div>
-            <ArrowRight className="w-6 h-6 text-muted-foreground ml-auto" />
-          </Card>
-        </Link> */}
+      <div className="grid md:grid-cols-1 gap-8 mb-12"> 
         <Link href="/create-listing" className="block">
-          <Card className="hover:shadow-lg transition-shadow p-6 flex items-center gap-4 bg-card hover:border-primary group"> {/* Added group here */}
+          <Card className="hover:shadow-lg transition-shadow p-6 flex items-center gap-4 bg-card hover:border-primary group">
             <PlusCircle className="w-12 h-12 text-accent" />
             <div>
               <h2 className="text-2xl font-semibold text-foreground">Sell an Item</h2>

@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { formatDistanceToNow } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ListingDetailPage() {
   const params = useParams();
@@ -24,6 +25,7 @@ export default function ListingDetailPage() {
   const [listing, setListing] = useState<Listing | null>(null);
   const [seller, setSeller] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast(); // Added useToast hook
 
   const id = params.id as string;
 
@@ -58,7 +60,7 @@ export default function ListingDetailPage() {
           } else {
             console.log("No such listing document!");
             setListing(null); 
-            router.push('/listings?error=notfound'); // Changed from /browse
+            router.push('/listings?error=notfound');
           }
         } catch (error) {
           console.error("Error fetching listing details:", error);
@@ -114,7 +116,7 @@ export default function ListingDetailPage() {
         <AlertTriangle className="mx-auto h-16 w-16 text-destructive mb-4" />
         <h3 className="text-xl font-semibold text-foreground mb-2">Listing not found</h3>
         <p className="text-muted-foreground">This item may have been removed or the link is incorrect.</p>
-        <Button onClick={() => router.push('/listings')} className="mt-6">Browse Other Items</Button> {/* Changed from /browse */}
+        <Button onClick={() => router.push('/listings')} className="mt-6">Browse Other Items</Button>
       </div>
     );
   }
@@ -142,7 +144,7 @@ export default function ListingDetailPage() {
               alt={listing.title}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 50vw"
-              className="object-cover"
+              className="object-contain" // Changed from object-cover to object-contain
               priority
               data-ai-hint={`${listing.category.toLowerCase()} detail view`}
             />
@@ -198,12 +200,9 @@ export default function ListingDetailPage() {
                     {listing.status === 'available' && (
                        <Button 
                           size="lg" 
-                          variant="default" // Or a different variant like "secondary"
+                          variant="default"
                           className="w-full text-base bg-green-600 hover:bg-green-700 text-white"
-                          onClick={async () => {
-                            // This is a simplified client-side update. Ideally, this action comes from UserListings.tsx or a dedicated context/hook for updates.
-                            // For now, this button would visually suggest it's sold but doesn't update DB from here.
-                            // The actual "Mark as Sold" logic is in UserListings.tsx
+                          onClick={() => {
                             toast({ title: "Action Needed", description: "Please mark as sold from your profile's 'My Listings' section."});
                           }}
                         >
@@ -231,11 +230,4 @@ export default function ListingDetailPage() {
       </div>
     </div>
   );
-}
-
-// Helper function for toast, can be removed if not used here and UserListings already handles it.
-import { useToast } from '@/hooks/use-toast';
-function toast(options: { title: string, description: string, variant?: "default" | "destructive" }) {
-  const { toast: showToast } = useToast(); // This is a bit awkward here.
-  showToast(options);
 }

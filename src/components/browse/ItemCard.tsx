@@ -30,7 +30,7 @@ export function ItemCard({ item }: ItemCardProps) {
             alt={title}
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            className="object-contain group-hover:scale-105 transition-transform duration-300" // Changed from object-cover to object-contain
             data-ai-hint={`${category.toLowerCase()} item`}
             onError={(e) => {
               (e.target as HTMLImageElement).src = 'https://placehold.co/600x400.png';
@@ -57,7 +57,7 @@ export function ItemCard({ item }: ItemCardProps) {
           <p className="line-clamp-3">{description}</p>
         </CardContent>
       </Link>
-      <CardFooter className="p-4 pt-0 mt-auto flex flex-col sm:flex-row sm:justify-end">
+      <CardFooter className="p-4 pt-0 mt-auto flex sm:justify-end">
         {sellerId && itemId ? (
           <Link href={`/chat?newChatWith=${sellerId}&itemId=${itemId}`} className="w-full sm:w-auto" passHref legacyBehavior>
             <Button 
