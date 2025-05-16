@@ -71,17 +71,7 @@ export default function LandingPage() {
             </Link>
           </div>
         </div>
-        <div className="mt-16 w-full max-w-4xl">
-            <Image 
-              src="https://placehold.co/1200x600.png" // Replace with a relevant hero image
-              alt="CampusKart marketplace illustration"
-              width={1200}
-              height={600}
-              className="rounded-xl shadow-2xl object-cover"
-              data-ai-hint="student marketplace collage"
-              priority
-            />
-        </div>
+        {/* Removed the placeholder image section */}
       </main>
       <footer className="text-center p-6 border-t">
         <p className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} CampusKart. All rights reserved.</p>
