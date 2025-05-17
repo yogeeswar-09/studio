@@ -16,12 +16,11 @@ import { mockCategories } from '@/lib/mock-data';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { Loader2, UploadCloud, Sparkles } from 'lucide-react'; // Added Sparkles
+import { Loader2, UploadCloud } from 'lucide-react';
 import Image from 'next/image';
 import { useState, ChangeEvent, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { suggestCategory as callSuggestCategoryFlow } from '@/ai/flows/suggest-category-flow'; // Import the Genkit flow
 
 const listingSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters.").max(100, "Title too long."),
@@ -72,8 +71,6 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [isSuggestingCategory, setIsSuggestingCategory] = useState(false); // For AI suggestion
-  const [suggestionError, setSuggestionError] = useState<string | null>(null); // For AI suggestion error
 
   const form = useForm<ListingFormValues>({
     resolver: zodResolver(listingSchema),
@@ -128,62 +125,6 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
     setImagePreview(url);
     setImageFile(null); 
   }
-
-  const handleSuggestCategory = async () => {
-    const title = form.getValues('title');
-    const description = form.getValues('description');
-
-    if (!title || !description) {
-      toast({
-        title: "Title and Description Needed",
-        description: "Please enter a title and description before suggesting a category.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSuggestingCategory(true);
-    setSuggestionError(null);
-    try {
-      const result = await callSuggestCategoryFlow({ title, description });
-      if (result.suggestedCategory) {
-        // Check if the suggested category is one of the valid enum values
-        const isValidCategory = mockCategories.includes(result.suggestedCategory as ListingCategory);
-        if (isValidCategory) {
-          form.setValue('category', result.suggestedCategory as ListingCategory, { shouldValidate: true });
-          toast({
-            title: "Category Suggested!",
-            description: `We've selected "${result.suggestedCategory}" based on your input.`,
-          });
-        } else {
-           toast({
-            title: "Suggestion Unclear",
-            description: "The AI suggested a category not in our list. Please select 'Other' or choose manually.",
-            variant: "default"
-          });
-          // Optionally set to 'Other' if the suggestion is invalid but not null
-          // form.setValue('category', 'Other', { shouldValidate: true });
-        }
-      } else {
-        toast({
-          title: "No Suggestion",
-          description: "The AI couldn't confidently suggest a category. Please select one manually.",
-          variant: "default" // Changed from destructive to default as it's not a critical error
-        });
-      }
-    } catch (error: any) {
-      console.error("Error suggesting category:", error);
-      setSuggestionError("Could not get category suggestion. Please try again or select manually.");
-      toast({
-        title: "Suggestion Failed",
-        description: error.message || "An error occurred while suggesting the category.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSuggestingCategory(false);
-    }
-  };
-
 
   const onSubmit = async (data: ListingFormValues) => {
     if (!user) {
@@ -316,24 +257,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                 name="category"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="flex items-center justify-between">
-                        <FormLabel>Category</FormLabel>
-                        <Button 
-                            type="button" 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={handleSuggestCategory} 
-                            disabled={isSuggestingCategory || isLoading || isUploadingImage || !form.watch('title') || !form.watch('description')}
-                            className="ml-2"
-                        >
-                            {isSuggestingCategory ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <Sparkles className="mr-2 h-4 w-4 text-accent" />
-                            )}
-                            Suggest
-                        </Button>
-                    </div>
+                    <FormLabel>Category</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} disabled={isLoading || isUploadingImage}>
                       <FormControl>
                         <SelectTrigger>
@@ -346,7 +270,6 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                         ))}
                       </SelectContent>
                     </Select>
-                    {suggestionError && <p className="text-sm text-destructive mt-1">{suggestionError}</p>}
                     <FormMessage />
                   </FormItem>
                 )}
