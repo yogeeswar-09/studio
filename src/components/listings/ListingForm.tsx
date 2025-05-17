@@ -16,17 +16,18 @@ import { mockCategories } from '@/lib/mock-data';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { Loader2, UploadCloud } from 'lucide-react';
+import { Loader2, UploadCloud, Sparkles } from 'lucide-react'; // Added Sparkles
 import Image from 'next/image';
 import { useState, ChangeEvent, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { suggestCategory as callSuggestCategoryFlow } from '@/ai/flows/suggest-category-flow'; // Import the Genkit flow
 
 const listingSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters.").max(100, "Title too long."),
   description: z.string().min(20, "Description must be at least 20 characters.").max(1000, "Description too long."),
   price: z.coerce.number().positive("Price must be a positive number."),
-  category: z.enum(mockCategories, { required_error: "Category is required." }),
+  category: z.enum(mockCategories as [string, ...string[]], { required_error: "Category is required." }),
   imageUrl: z.string().url("Image URL is required if not uploading a file.").optional().or(z.literal('')),
 });
 
@@ -42,7 +43,6 @@ const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESE
 
 async function uploadToCloudinary(file: File): Promise<string> {
   if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-    // This check is also present at the start of onSubmit for early exit
     throw new Error("Cloudinary environment variables not set.");
   }
   const formData = new FormData();
@@ -69,9 +69,11 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [isUploadingImage, setIsUploadingImage] = useState(false); // Specific state for image upload
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isSuggestingCategory, setIsSuggestingCategory] = useState(false); // For AI suggestion
+  const [suggestionError, setSuggestionError] = useState<string | null>(null); // For AI suggestion error
 
   const form = useForm<ListingFormValues>({
     resolver: zodResolver(listingSchema),
@@ -127,6 +129,62 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
     setImageFile(null); 
   }
 
+  const handleSuggestCategory = async () => {
+    const title = form.getValues('title');
+    const description = form.getValues('description');
+
+    if (!title || !description) {
+      toast({
+        title: "Title and Description Needed",
+        description: "Please enter a title and description before suggesting a category.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSuggestingCategory(true);
+    setSuggestionError(null);
+    try {
+      const result = await callSuggestCategoryFlow({ title, description });
+      if (result.suggestedCategory) {
+        // Check if the suggested category is one of the valid enum values
+        const isValidCategory = mockCategories.includes(result.suggestedCategory as ListingCategory);
+        if (isValidCategory) {
+          form.setValue('category', result.suggestedCategory as ListingCategory, { shouldValidate: true });
+          toast({
+            title: "Category Suggested!",
+            description: `We've selected "${result.suggestedCategory}" based on your input.`,
+          });
+        } else {
+           toast({
+            title: "Suggestion Unclear",
+            description: "The AI suggested a category not in our list. Please select 'Other' or choose manually.",
+            variant: "default"
+          });
+          // Optionally set to 'Other' if the suggestion is invalid but not null
+          // form.setValue('category', 'Other', { shouldValidate: true });
+        }
+      } else {
+        toast({
+          title: "No Suggestion",
+          description: "The AI couldn't confidently suggest a category. Please select one manually.",
+          variant: "default" // Changed from destructive to default as it's not a critical error
+        });
+      }
+    } catch (error: any) {
+      console.error("Error suggesting category:", error);
+      setSuggestionError("Could not get category suggestion. Please try again or select manually.");
+      toast({
+        title: "Suggestion Failed",
+        description: error.message || "An error occurred while suggesting the category.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSuggestingCategory(false);
+    }
+  };
+
+
   const onSubmit = async (data: ListingFormValues) => {
     if (!user) {
       toast({ title: "Authentication Error", description: "You must be logged in.", variant: "destructive" });
@@ -150,16 +208,16 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
 
     try {
       if (imageFile) {
-        setIsUploadingImage(true); // Start specific image upload indication
+        setIsUploadingImage(true);
         try {
           finalImageUrl = await uploadToCloudinary(imageFile);
         } catch (uploadError: any) {
           toast({ title: "Image Upload Failed", description: uploadError.message || "Could not upload the image.", variant: "destructive" });
           setIsLoading(false);
           setIsUploadingImage(false);
-          return; // Stop form submission if image upload fails
+          return;
         } finally {
-          setIsUploadingImage(false); // End specific image upload indication
+          setIsUploadingImage(false);
         }
       }
 
@@ -198,7 +256,6 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
       toast({ title: "Submission Failed", description: error.message || "Could not save the listing.", variant: "destructive" });
     } finally {
       setIsLoading(false);
-      // isUploadingImage should already be false here if it was set
     }
   };
 
@@ -259,7 +316,24 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                 name="category"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Category</FormLabel>
+                    <div className="flex items-center justify-between">
+                        <FormLabel>Category</FormLabel>
+                        <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handleSuggestCategory} 
+                            disabled={isSuggestingCategory || isLoading || isUploadingImage || !form.watch('title') || !form.watch('description')}
+                            className="ml-2"
+                        >
+                            {isSuggestingCategory ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Sparkles className="mr-2 h-4 w-4 text-accent" />
+                            )}
+                            Suggest
+                        </Button>
+                    </div>
                     <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} disabled={isLoading || isUploadingImage}>
                       <FormControl>
                         <SelectTrigger>
@@ -272,6 +346,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                         ))}
                       </SelectContent>
                     </Select>
+                    {suggestionError && <p className="text-sm text-destructive mt-1">{suggestionError}</p>}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -306,7 +381,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                         className="hidden" 
                         accept="image/*"
                         onChange={handleImageUpload}
-                        disabled={isLoading || isUploadingImage} // Disable during overall loading or specific image upload
+                        disabled={isLoading || isUploadingImage}
                     />
                     </Label>
                     <FormField
@@ -342,5 +417,3 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
     </Card>
   );
 }
-
-    
