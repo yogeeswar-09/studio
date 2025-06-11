@@ -5,10 +5,11 @@ import { AppLogo } from "@/components/common/AppLogo";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress"; 
 import { useAuth } from "@/hooks/use-auth";
-import { ArrowRight } from "lucide-react"; 
+import { ArrowRight, ShieldCheck, ShoppingCart, MessageSquare } from "lucide-react"; 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react"; 
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 export default function LandingPage() {
   const { user, isLoading } = useAuth();
@@ -65,12 +66,32 @@ export default function LandingPage() {
     );
   }
   
+  const features = [
+    {
+      icon: <ShieldCheck className="h-10 w-10 text-primary mb-4" />,
+      title: "Trusted Campus Community",
+      description: "Connect exclusively with fellow MLRIT students. All users are verified via their college email, ensuring a safer environment for everyone."
+    },
+    {
+      icon: <ShoppingCart className="h-10 w-10 text-primary mb-4" />,
+      title: "List, Discover, Deal",
+      description: "Effortlessly list your unused items or browse a wide range of student essentials – from textbooks and electronics to lab equipment and more."
+    },
+    {
+      icon: <MessageSquare className="h-10 w-10 text-primary mb-4" />,
+      title: "Seamless Communication",
+      description: "Connect directly with buyers or sellers through our integrated chat. Ask questions, negotiate prices, and arrange meetups with ease."
+    }
+  ];
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="p-4 sm:p-6 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <AppLogo />
       </header>
-      <main className="flex-grow flex flex-col items-center justify-center text-center p-6 bg-gradient-to-br from-primary/10 via-background to-accent/5">
+      
+      {/* Hero Section */}
+      <main className="flex-grow flex flex-col items-center justify-center text-center p-6 bg-gradient-to-br from-primary/5 via-background to-accent/5">
         <div className="max-w-3xl">
           <AppLogo iconSize={60} textSize="text-5xl sm:text-6xl" className="justify-center mb-6" />
           <h1 className="text-4xl sm:text-5xl font-extrabold text-foreground mb-6 leading-tight">
@@ -93,6 +114,29 @@ export default function LandingPage() {
           </div>
         </div>
       </main>
+
+      {/* What We Provide Section */}
+      <section className="py-16 sm:py-24 bg-background">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl sm:text-4xl font-bold text-center text-foreground mb-12 sm:mb-16">
+            What CampusKart Offers
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <Card key={index} className="shadow-lg hover:shadow-xl transition-shadow duration-300 bg-card text-left">
+                <CardHeader className="items-center md:items-start">
+                  {feature.icon}
+                  <CardTitle className="text-xl font-semibold text-center md:text-left">{feature.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground text-center md:text-left">{feature.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <footer className="text-center p-6 border-t bg-background/80">
         <p className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} CampusKart. All rights reserved.</p>
         <p className="text-xs text-muted-foreground mt-1">
