@@ -30,7 +30,7 @@ export function FilterSidebar() {
     
     setSelectedCategories(categories);
     setPriceRange([minPrice, maxPrice]);
-  }, [searchParams]);
+  }, [searchParams.toString()]); // Use .toString() for stable dependency
 
   const handleCategoryChange = (category: ListingCategory) => {
     setSelectedCategories(prev =>
@@ -57,7 +57,7 @@ export function FilterSidebar() {
   };
 
   const applyFilters = () => {
-    const current = new URLSearchParams(Array.from(searchParams.entries()));
+    const current = new URLSearchParams(searchParams.toString());
 
     if (selectedCategories.length > 0) {
       current.set('categories', selectedCategories.join(','));
@@ -79,15 +79,20 @@ export function FilterSidebar() {
     setSelectedCategories([]);
     setPriceRange([0, MAX_PRICE]);
     
-    const current = new URLSearchParams(Array.from(searchParams.entries()));
+    // Create a new URLSearchParams, modify it, then push
+    const current = new URLSearchParams(searchParams.toString());
     current.delete('categories');
     current.delete('minPrice');
     current.delete('maxPrice');
-    current.set('page', '1'); // Reset page to 1
+    current.set('page', '1'); 
     
     const search = current.toString();
-    const query = search ? `?${search}` : '';
-    router.push(`${pathname}${query}`);
+    const query = search ? `?${search}` : ''; // If all params are deleted, query will be empty
+    if (query) {
+      router.push(`${pathname}${query}`);
+    } else {
+      router.push(pathname); // Push just the pathname if no query params left
+    }
   };
   
   const hasActiveFilters = 
@@ -99,7 +104,7 @@ export function FilterSidebar() {
     searchParams.get('maxPrice');
 
   return (
-    <Card className="sticky top-20"> {/* Adjust top value based on header height */}
+    <Card className="sticky top-20"> 
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-xl flex items-center"><Filter className="mr-2 h-5 w-5"/>Filters</CardTitle>
         {hasActiveFilters && (
@@ -159,5 +164,7 @@ export function FilterSidebar() {
     </Card>
   );
 }
+
+    
 
     

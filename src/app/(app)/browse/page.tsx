@@ -62,10 +62,11 @@ function BrowsePageContent() {
     setSearchTerm(queryParam);
     setSortBy(sortByParam);
     setCurrentPage(pageParam);
-  }, [searchParams]);
+  }, [searchParams.toString()]); // Use .toString() for stable dependency
 
   const fetchListings = useCallback(async (loadMore = false) => {
-    console.log(`BrowsePage: fetchListings called. loadMore: ${loadMore}, current sortBy: ${sortBy}, current searchParams for filters: ${searchParams.toString()}`);
+    const currentSearchParamsString = searchParams.toString();
+    console.log(`BrowsePage: fetchListings called. loadMore: ${loadMore}, current sortBy: ${sortBy}, current searchParams for filters: ${currentSearchParamsString}`);
     if (!loadMore) {
       setIsLoading(true);
       setAllFetchedListings([]);
@@ -84,7 +85,10 @@ function BrowsePageContent() {
     const listingsRef = collection(db, "listings");
     let qConstraints: QueryConstraint[] = [where("status", "==", "available")];
 
-    const categoriesParam = searchParams.get('categories');
+    // Use a temporary URLSearchParams instance for reading current params
+    const currentParams = new URLSearchParams(currentSearchParamsString);
+
+    const categoriesParam = currentParams.get('categories');
     if (categoriesParam) {
         const categories = categoriesParam.split(',');
         if (categories.length > 0) {
@@ -93,8 +97,8 @@ function BrowsePageContent() {
         }
     }
     
-    const minPrice = parseFloat(searchParams.get('minPrice') || '0');
-    const maxPrice = parseFloat(searchParams.get('maxPrice') || Number.MAX_SAFE_INTEGER.toString());
+    const minPrice = parseFloat(currentParams.get('minPrice') || '0');
+    const maxPrice = parseFloat(currentParams.get('maxPrice') || Number.MAX_SAFE_INTEGER.toString());
     if (minPrice > 0) {
         console.log("BrowsePage: Applying minPrice filter:", minPrice);
         qConstraints.push(where('price', '>=', minPrice));
@@ -110,9 +114,6 @@ function BrowsePageContent() {
     else if (sortBy === 'createdAt_asc') qConstraints.push(orderBy('createdAt', 'asc'));
     else qConstraints.push(orderBy('createdAt', 'desc')); // Default
 
-    // Always fetch ITEMS_PER_PAGE when loading more or for the initial main fetch.
-    // The initial buffer idea (ITEMS_PER_PAGE * 2) can be complex with dynamic "load more".
-    // Let's simplify: fetch one page (ITEMS_PER_PAGE) at a time.
     const fetchLimit = ITEMS_PER_PAGE;
     qConstraints.push(limit(fetchLimit)); 
     console.log("BrowsePage: Applying limit:", fetchLimit);
@@ -141,7 +142,6 @@ function BrowsePageContent() {
         console.log("BrowsePage: Less items fetched than limit, setting hasMore to false.");
         setHasMore(false);
       } else {
-        // If we fetched exactly the limit, there might be more.
         setHasMore(true);
       }
       
@@ -162,26 +162,21 @@ function BrowsePageContent() {
           duration: 10000,
         });
       }
-      setHasMore(false); // Stop trying to fetch more if there's an error
+      setHasMore(false); 
     } finally {
       setIsLoading(false);
       setIsFetchingMore(false);
       console.log("BrowsePage: fetchListings finished.");
     }
-  }, [searchParams, sortBy, lastVisible, toast, hasMore]); // Added hasMore to dependencies
+  }, [searchParams.toString(), sortBy, lastVisible, toast, hasMore]); 
 
 
-  // Effect to trigger initial fetch or re-fetch when URL-driven filters or sort order change.
   useEffect(() => {
-    // This effect triggers when `fetchListings` identity changes, which happens
-    // when its dependencies (searchParams, sortBy state, lastVisible, hasMore) change.
-    // For an initial load or a full filter/sort change (not pagination), `loadMore` is false.
     console.log("BrowsePage: useEffect for fetchListings triggered. Will fetch initial set (loadMore=false).");
     fetchListings(false); 
-  }, [fetchListings]); // fetchListings itself is a callback with its own deps.
+  }, [fetchListings]); 
 
 
-  // Client-side filtering for search term
   useEffect(() => {
     console.log(`BrowsePage: Client-side filter running. searchTerm: '${searchTerm}', allFetchedListings count: ${allFetchedListings.length}`);
     let tempFiltered = [...allFetchedListings];
@@ -193,12 +188,11 @@ function BrowsePageContent() {
       );
     }
     setClientFilteredListings(tempFiltered);
-    setCurrentPage(1); // Reset to page 1 whenever the client-side filter result changes
+    setCurrentPage(1); 
     console.log(`BrowsePage: Client-side filter result count: ${tempFiltered.length}. Current page reset to 1.`);
   }, [allFetchedListings, searchTerm]);
 
 
-  // Pagination logic based on client-filtered listings
   useEffect(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     const end = start + ITEMS_PER_PAGE;
@@ -214,7 +208,7 @@ function BrowsePageContent() {
         return;
     }
     setCurrentPage(newPage);
-    const current = new URLSearchParams(Array.from(searchParams.entries()));
+    const current = new URLSearchParams(searchParams.toString());
     current.set('page', newPage.toString());
     router.push(`${pathname}?${current.toString()}`, { scroll: false });
   };
@@ -222,47 +216,42 @@ function BrowsePageContent() {
   const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     console.log(`BrowsePage: Search submitted with searchTerm: '${searchTerm}'`);
-    const current = new URLSearchParams(Array.from(searchParams.entries()));
+    const current = new URLSearchParams(searchParams.toString());
     if (searchTerm.trim()) {
       current.set('q', searchTerm.trim());
     } else {
       current.delete('q');
     }
-    current.set('page', '1'); // Reset page to 1 in URL on new search
+    current.set('page', '1'); 
     router.push(`${pathname}?${current.toString()}`);
-    // `fetchListings` will be triggered by `searchParams` change if server filters change.
-    // `searchTerm` state will update via `useEffect` from `searchParams`, triggering client filter.
-    // `currentPage` will be reset by the useEffect syncing from URL params.
   };
 
   const handleSortChange = (newSortBy: string) => {
     console.log(`BrowsePage: Sort changed to: '${newSortBy}'`);
-    setSortBy(newSortBy); // Update local sortBy state FIRST
-    const current = new URLSearchParams(Array.from(searchParams.entries()));
+    setSortBy(newSortBy); 
+    const current = new URLSearchParams(searchParams.toString());
     current.set('sortBy', newSortBy);
     current.set('page', '1'); 
     router.push(`${pathname}?${current.toString()}`);
-    // fetchListings will re-run due to sortBy state changing its identity
   };
 
   const handleClearAllFilters = () => {
     console.log("BrowsePage: Clearing all filters.");
     setSearchTerm(''); 
-    setSortBy('createdAt_desc'); // Reset sort state
-    setCurrentPage(1); // Reset page state
-    // FilterSidebar will clear its own params via router.push.
-    // For browse page, pushing to pathname clears URL query params.
+    setSortBy('createdAt_desc'); 
+    setCurrentPage(1); 
     router.push(pathname); 
-    // fetchListings will be triggered by searchParams change (becoming empty) and sortBy potentially changing.
   };
   
   const hasAnyActiveFilters = () => {
-    return searchParams.has('q') || 
-           searchParams.has('categories') ||
-           searchParams.has('minPrice') ||
-           searchParams.has('maxPrice') ||
-           (searchParams.get('sortBy') && searchParams.get('sortBy') !== 'createdAt_desc') ||
-           (searchParams.get('page') && searchParams.get('page') !== '1');
+    // Create a temporary copy for checking without relying on direct searchParams object iteration
+    const currentParams = new URLSearchParams(searchParams.toString());
+    return currentParams.has('q') || 
+           currentParams.has('categories') ||
+           currentParams.has('minPrice') ||
+           currentParams.has('maxPrice') ||
+           (currentParams.get('sortBy') && currentParams.get('sortBy') !== 'createdAt_desc') ||
+           (currentParams.get('page') && currentParams.get('page') !== '1');
   };
 
   const handleLoadMoreServer = () => {
@@ -362,7 +351,6 @@ function BrowsePageContent() {
           </div>
         )}
         
-        {/* Server-side "Load More" button */}
         {hasMore && !isLoading && (
           <div className="mt-8 flex justify-center">
             <Button
@@ -377,7 +365,6 @@ function BrowsePageContent() {
         )}
 
 
-        {/* Client-side Pagination controls */}
         {clientFilteredListings.length > ITEMS_PER_PAGE && totalClientPages > 1 && (
           <div className="mt-8 flex justify-center items-center space-x-2">
             <Button
@@ -388,17 +375,14 @@ function BrowsePageContent() {
               <ArrowLeft className="mr-2 h-4 w-4" /> Previous
             </Button>
             {Array.from({ length: totalClientPages }, (_, i) => i + 1)
-              .filter(page => page === 1 || page === totalClientPages || (page >= currentPage - 2 && page <= currentPage + 2)) // Show current, first, last, and +/-2
+              .filter(page => page === 1 || page === totalClientPages || (page >= currentPage - 2 && page <= currentPage + 2)) 
               .map((page, index, arr) => {
-                  const isEllipsisNeededBefore = index > 0 && page - arr[index-1] > 1 && page !== currentPage -2 && page !== currentPage -1 && page !== currentPage;
-                  const isEllipsisNeededAfter = index < arr.length -1 && arr[index+1] - page > 1 && page !== currentPage +2 && page !== currentPage +1 && page !== currentPage;
                   
                   let showEllipsis = false;
                   if (index > 0 && page - arr[index-1] > 1) {
-                    // Check if the previous number was not an immediate neighbor or first page
                     if (arr[index-1] !== 1 && (currentPage > page || currentPage < arr[index-1])) {
                        showEllipsis = true;
-                    } else if (page > currentPage + 2 && arr[index-1] === 1) { // Ellipsis between 1 and start of current window
+                    } else if (page > currentPage + 2 && arr[index-1] === 1) { 
                        showEllipsis = true;
                     }
                   }
@@ -438,6 +422,8 @@ export default function BrowsePage() {
     </Suspense>
   );
 }
+    
+
     
 
     
