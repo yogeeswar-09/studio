@@ -5,11 +5,11 @@ import { AppLogo } from "@/components/common/AppLogo";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress"; 
 import { useAuth } from "@/hooks/use-auth";
-import { ArrowRight, ShieldCheck, ShoppingCart, MessageSquare } from "lucide-react"; 
+import { ArrowRight, ShieldCheck, ShoppingCart, MessageSquare, Mail } from "lucide-react"; 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react"; 
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 
 export default function LandingPage() {
   const { user, isLoading } = useAuth();
@@ -134,6 +134,40 @@ export default function LandingPage() {
               </Card>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Contact Us Section */}
+      <section className="py-16 sm:py-24 bg-background">
+        <div className="container mx-auto px-4">
+          <Card className="max-w-2xl mx-auto shadow-xl border-primary/20 hover:shadow-primary/10 transition-all duration-300">
+            <CardHeader className="text-center">
+              <Mail className="mx-auto h-12 w-12 text-primary mb-4" />
+              <CardTitle className="text-3xl font-bold text-foreground">Get in Touch</CardTitle>
+              <CardDescription className="text-lg text-muted-foreground pt-1">
+                We'd love to hear from you!
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <p className="text-muted-foreground">
+                Have questions, suggestions, or need help with something? 
+                Our team is here to assist.
+              </p>
+              <p className="text-lg">
+                <span className="font-medium text-foreground">Email us at:</span>
+                <br />
+                <a 
+                  href="mailto:Codecraftersmlr@gmail.com" 
+                  className="text-xl font-semibold text-primary hover:underline"
+                >
+                  Codecraftersmlr@gmail.com
+                </a>
+              </p>
+              <p className="text-sm text-muted-foreground pt-4">
+                We'll do our best to get back to you as soon as possible.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
