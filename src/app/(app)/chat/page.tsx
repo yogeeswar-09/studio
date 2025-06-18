@@ -65,6 +65,7 @@ function ChatPageContent() {
       setIsLoadingConversations(false);
       return;
     }
+    console.log("AuthContext (ChatPage): Fetching conversations for user:", currentUser.uid);
     setIsLoadingConversations(true);
     const q = query(
       collection(db, "conversations"),
@@ -73,6 +74,7 @@ function ChatPageContent() {
     );
 
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+      console.log("AuthContext (ChatPage): Conversations snapshot received, docs count:", querySnapshot.docs.length);
       const convos: ChatConversation[] = [];
       for (const docSnap of querySnapshot.docs) {
         const data = docSnap.data();
@@ -86,16 +88,17 @@ function ChatPageContent() {
           id: docSnap.id,
           ...data,
           participants: otherUserDetails ? [currentUser, otherUserDetails] : [currentUser], // Store fetched details
- updatedAt: (data.updatedAt as Timestamp | null)?.toDate()?.toISOString() || new Date().toISOString(),
- createdAt: (data.createdAt as Timestamp | null)?.toDate()?.toISOString() || new Date().toISOString(),
+          updatedAt: (data.updatedAt as Timestamp | null)?.toDate()?.toISOString() || new Date().toISOString(),
+          createdAt: (data.createdAt as Timestamp | null)?.toDate()?.toISOString() || new Date().toISOString(),
           lastMessage: data.lastMessage ? {
             ...data.lastMessage,
- timestamp: (data.lastMessage.timestamp as Timestamp | null)?.toDate()?.toISOString() || new Date().toISOString()
+            timestamp: (data.lastMessage.timestamp as Timestamp | null)?.toDate()?.toISOString() || new Date().toISOString()
           } : undefined,
         } as ChatConversation);
       }
       setConversations(convos);
       setIsLoadingConversations(false);
+      console.log("AuthContext (ChatPage): Conversations processed, count:", convos.length, "isLoadingConversations set to false.");
     }, (error) => {
       console.error("Error fetching conversations: ", error);
       toast({ title: "Error", description: "Could not fetch conversations.", variant: "destructive" });
@@ -108,22 +111,28 @@ function ChatPageContent() {
 
   // Effect to handle initial chat selection based on URL params or new chat creation
   useEffect(() => {
-    if (!currentUser || conversations.length === 0 && !isLoadingConversations) return;
+    const searchParamsString = searchParams.toString();
+    console.log("AuthContext (ChatPage): Initial chat selection effect. currentUser:", !!currentUser, "conversations count:", conversations.length, "isLoadingConversations:", isLoadingConversations, "searchParams:", searchParamsString, "selectedChatId:", selectedChatId);
+
+    if (!currentUser || (conversations.length === 0 && !isLoadingConversations && !searchParams.get('newChatWith')) ) { // Added !searchParams.get('newChatWith') condition
+      console.log("AuthContext (ChatPage): Bailing from initial chat selection - no current user, or no convos and not starting new one.");
+      return;
+    }
+
 
     const chatIdFromUrl = searchParams.get('chatId');
-    const newChatWithUserId = searchParams.get('newChatWith'); // This is the UID of the other user
+    const newChatWithUserId = searchParams.get('newChatWith'); 
     const itemId = searchParams.get('itemId');
 
     const handleNewChat = async () => {
+      console.log("AuthContext (ChatPage): handleNewChat triggered. newChatWithUserId:", newChatWithUserId, "itemId:", itemId);
       if (newChatWithUserId && currentUser.uid) {
-        // Prevent chatting with oneself
         if (newChatWithUserId === currentUser.uid) {
             toast({ title: "Cannot chat with yourself", variant: "destructive" });
-            router.replace('/chat'); // Clear query params
+            router.replace('/chat'); 
             return;
         }
 
-        // Check for existing conversation
         const existingQueryConstraints = [
             where("participantUids", "array-contains", currentUser.uid),
         ];
@@ -141,7 +150,7 @@ function ChatPageContent() {
             if (uids.includes(newChatWithUserId) && uids.includes(currentUser.uid)) {
                 if (itemId && data.listingId === itemId) {
                      foundConversation = {id: doc.id, ...data} as ChatConversation;
-                } else if (!itemId && !data.listingId) { // Check for general chat if no itemId and listingId is also null/undefined
+                } else if (!itemId && !data.listingId) { 
                      foundConversation = {id: doc.id, ...data} as ChatConversation;
                 }
             }
@@ -149,8 +158,10 @@ function ChatPageContent() {
 
 
         if (foundConversation) {
+          console.log("AuthContext (ChatPage): Existing conversation found:", foundConversation.id);
           setSelectedChatId(foundConversation.id);
         } else {
+          console.log("AuthContext (ChatPage): No existing conversation, creating new one.");
           const otherUser = await fetchUserDetails(newChatWithUserId);
           if (otherUser) {
             const newConvoData = {
@@ -164,6 +175,7 @@ function ChatPageContent() {
             };
             try {
               const docRef = await addDoc(collection(db, "conversations"), newConvoData);
+              console.log("AuthContext (ChatPage): New conversation created:", docRef.id);
               setSelectedChatId(docRef.id);
               setMessages([]); 
             } catch (error) {
@@ -179,7 +191,7 @@ function ChatPageContent() {
         currentUrl.searchParams.delete('itemId');
         if (foundConversation) {
           currentUrl.searchParams.set('chatId', foundConversation.id);
-        } else if (selectedChatId) { // This branch might be tricky if new convo failed. Revisit.
+        } else if (selectedChatId) { 
            currentUrl.searchParams.set('chatId', selectedChatId);
         }
         router.replace(currentUrl.toString());
@@ -190,17 +202,28 @@ function ChatPageContent() {
       handleNewChat();
     } else if (chatIdFromUrl) {
         const convoExists = conversations.find(c => c.id === chatIdFromUrl);
-        if (convoExists) setSelectedChatId(chatIdFromUrl);
-        else if (conversations.length > 0 && !isLoadingConversations) setSelectedChatId(conversations[0].id);
+        if (convoExists) {
+            console.log("AuthContext (ChatPage): Selecting chat from URL param:", chatIdFromUrl);
+            setSelectedChatId(chatIdFromUrl);
+        } else if (conversations.length > 0 && !isLoadingConversations) {
+            console.log("AuthContext (ChatPage): Chat from URL not found, selecting first available chat:", conversations[0].id);
+            setSelectedChatId(conversations[0].id);
+        } else {
+            console.log("AuthContext (ChatPage): Chat from URL not found, no other convos to select.");
+        }
     } else if (conversations.length > 0 && !isLoadingConversations && !selectedChatId) {
+      console.log("AuthContext (ChatPage): No URL param, selecting first available chat:", conversations[0].id);
       setSelectedChatId(conversations[0].id); 
+    } else {
+      console.log("AuthContext (ChatPage): No chat selection conditions met.");
     }
 
-  }, [currentUser, conversations, searchParams, router, toast, isLoadingConversations, selectedChatId]); // Added selectedChatId
+  }, [currentUser, conversations, searchParams.toString(), router, toast, isLoadingConversations, selectedChatId]);
 
 
   // Effect to fetch messages for the selected chat and mark as read
   useEffect(() => {
+    console.log("AuthContext (ChatPage): Fetch messages effect. selectedChatId:", selectedChatId, "currentUser:", !!currentUser);
     if (!selectedChatId) {
       setMessages([]);
       setOtherParticipantDetails(null);
@@ -213,30 +236,26 @@ function ChatPageContent() {
     );
 
     const unsubscribe = onSnapshot(messagesQuery, async (querySnapshot) => {
-      const msgs: ChatMessage[] = querySnapshot.docs.map(docSnap => ({ // Renamed doc to docSnap
+      console.log("AuthContext (ChatPage): Messages snapshot received for chat:", selectedChatId, "docs count:", querySnapshot.docs.length);
+      const msgs: ChatMessage[] = querySnapshot.docs.map(docSnap => ({
         id: docSnap.id,
         ...docSnap.data(),
         timestamp: (docSnap.data().timestamp as Timestamp)?.toDate()?.toISOString() || new Date().toISOString(),
       } as ChatMessage));
       setMessages(msgs);
       setIsLoadingMessages(false);
+      console.log("AuthContext (ChatPage): Messages processed, count:", msgs.length, "isLoadingMessages set to false.");
 
-      // Mark messages as read for current user
       if (currentUser?.uid && selectedChatId) {
         const currentConvoDetails = conversations.find(c => c.id === selectedChatId);
         if (currentConvoDetails && (currentConvoDetails.unreadCount?.[currentUser.uid] || 0) > 0) {
           try {
             const conversationDocRef = doc(db, "conversations", selectedChatId);
             const updatePath = `unreadCount.${currentUser.uid}`;
-            await updateDoc(conversationDocRef, {
-              [updatePath]: 0,
-              // Optionally update updatedAt timestamp if you want "seen" to also sort convos
-              // updatedAt: serverTimestamp() 
-            });
+            await updateDoc(conversationDocRef, { [updatePath]: 0 });
             console.log(`ChatPage: Marked messages as read for user ${currentUser.uid} in chat ${selectedChatId}`);
           } catch (error) {
             console.error("Error marking messages as read:", error);
-            // Optional: toast error if needed, but might be too noisy
           }
         }
       }
@@ -252,20 +271,29 @@ function ChatPageContent() {
         if (otherUid) {
             const existingOtherParticipant = currentConvo.participants?.find(p => p.uid === otherUid);
             if (existingOtherParticipant) {
+                console.log("AuthContext (ChatPage): Using existing other participant details from convo object.");
                 setOtherParticipantDetails(existingOtherParticipant);
             } else {
-                fetchUserDetails(otherUid).then(setOtherParticipantDetails);
+                console.log("AuthContext (ChatPage): Fetching other participant details for UID:", otherUid);
+                fetchUserDetails(otherUid).then(details => {
+                    setOtherParticipantDetails(details);
+                    console.log("AuthContext (ChatPage): Fetched other participant details:", details?.name);
+                });
             }
         } else {
             setOtherParticipantDetails(null);
+            console.log("AuthContext (ChatPage): No other UID found in selected conversation.");
         }
+    } else {
+        console.log("AuthContext (ChatPage): No currentConvo or currentUser for setting otherParticipantDetails.");
     }
 
     return () => unsubscribe();
-  }, [selectedChatId, currentUser, conversations, toast]); // Removed messages from deps here to avoid loop
+  }, [selectedChatId, currentUser?.uid, conversations, toast]); // currentUser.uid for stability
 
 
   const handleSelectChat = (chatId: string) => {
+    console.log("AuthContext (ChatPage): handleSelectChat, new chatId:", chatId);
     setSelectedChatId(chatId);
     const currentUrl = new URL(window.location.toString());
     currentUrl.searchParams.set('chatId', chatId);
@@ -303,6 +331,7 @@ function ChatPageContent() {
     try {
       const messagesColRef = collection(db, "conversations", selectedChatId, "messages");
       await addDoc(messagesColRef, newMessage);
+      console.log("AuthContext (ChatPage): Message sent to chat:", selectedChatId);
 
       const conversationDocRef = doc(db, "conversations", selectedChatId);
       
@@ -315,9 +344,10 @@ function ChatPageContent() {
         updatedAt: serverTimestamp(),
       };
       updateData[`unreadCount.${receiverUid}`] = (currentConvo.unreadCount?.[receiverUid] || 0) + 1;
-      updateData[`unreadCount.${currentUser.uid}`] = 0; // Sender's count is 0 for this chat
+      updateData[`unreadCount.${currentUser.uid}`] = 0; 
       
       await updateDoc(conversationDocRef, updateData);
+      console.log("AuthContext (ChatPage): Conversation document updated for chat:", selectedChatId);
     } catch (error) {
         console.error("Error sending message:", error);
         toast({title: "Message Failed", description: "Could not send message.", variant: "destructive"});
@@ -327,7 +357,8 @@ function ChatPageContent() {
   const selectedConversationDetails = conversations.find(c => c.id === selectedChatId);
 
 
-  if (authLoading || isLoadingConversations) {
+  if (authLoading || (isLoadingConversations && conversations.length === 0)) { // Adjusted condition
+    console.log("AuthContext (ChatPage): Showing main loading skeleton. authLoading:", authLoading, "isLoadingConversations:", isLoadingConversations);
     return (
       <div className="flex h-[calc(100vh-var(--header-height,4rem))]">
         <div className="w-1/4 border-r p-4 space-y-3 hidden md:block">
@@ -359,6 +390,7 @@ function ChatPageContent() {
       </div>
     );
   }
+  console.log("AuthContext (ChatPage): Rendering main chat UI. authLoading:", authLoading, "isLoadingConversations:", isLoadingConversations);
 
   return (
     <div className="flex h-[calc(100vh-var(--header-height,4rem))] overflow-hidden">
@@ -391,3 +423,5 @@ export default function ChatPage() {
     </Suspense>
   );
 }
+
+    

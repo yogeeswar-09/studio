@@ -37,21 +37,21 @@ function ListingsPageContent() {
   const [currentCategory, setCurrentCategory] = useState<ListingCategory | null>(null);
 
   useEffect(() => {
+    const searchParamsString = searchParams.toString(); // For stable dependency
     const categoryParam = searchParams.get('category') as ListingCategory | null;
-    console.log(`ListingsPage: Category from URL: '${categoryParam}'`);
+    console.log(`ListingsPage: Category from URL: '${categoryParam}' | searchParamsString: ${searchParamsString}`);
     setCurrentCategory(categoryParam);
     // Reset listings and pagination when category changes
     setListings([]);
     setLastVisible(null);
     setHasMore(true);
     setIsLoading(true); // Set loading true to trigger fetch
-  }, [searchParams]);
+  }, [searchParams.toString()]); // Use searchParams.toString()
 
   const fetchListings = useCallback(async (loadMore = false) => {
     console.log(`ListingsPage: fetchListings called. loadMore: ${loadMore}, category: ${currentCategory}`);
     if (!loadMore) {
       setIsLoading(true);
-      // Already reset in useEffect, but to be safe if called directly
       setListings([]); 
       setLastVisible(null);
       setHasMore(true);
@@ -60,8 +60,6 @@ function ListingsPageContent() {
         console.log("ListingsPage: fetchListings (loadMore) called but hasMore is false. Aborting.");
         return;
       }
-      // For loadMore, isLoading state is not set to true, as we're appending, not replacing.
-      // A different state like isFetchingMore could be used if needed for UI.
     }
 
     const listingsRef = collection(db, "listings");
@@ -72,7 +70,6 @@ function ListingsPageContent() {
       qConstraints.push(where('category', '==', currentCategory));
     }
     
-    // Default sort: Newest first
     qConstraints.push(orderBy('createdAt', 'desc'));
     qConstraints.push(limit(ITEMS_PER_PAGE));
 
@@ -81,7 +78,7 @@ function ListingsPageContent() {
       qConstraints.push(startAfter(lastVisible));
     }
     
-    console.log("ListingsPage: Final qConstraints:", qConstraints.map(c => `${c.type}: ${(c as any)._op} ${(c as any)._value}`));
+    // console.log("ListingsPage: Final qConstraints:", qConstraints.map(c => `${c.type}: ${(c as any)._op} ${(c as any)._value}`));
 
     try {
       const querySnapshot = await getDocs(query(listingsRef, ...qConstraints));
@@ -124,17 +121,14 @@ function ListingsPageContent() {
 
 
   useEffect(() => {
-    // Trigger fetch when isLoading is true (set by category change) or component mounts initially.
-    // The `fetchListings` callback itself has dependencies and won't re-run unnecessarily
-    // if its dependencies (currentCategory, lastVisible, hasMore) haven't changed.
     if (isLoading) {
-       fetchListings(false); // Initial fetch for currentCategory
+       fetchListings(false); 
     }
   }, [isLoading, fetchListings]);
 
   const handleLoadMore = () => {
-    if (hasMore && !isLoading) { // ensure not already loading
-      fetchListings(true); // Pass true for loadMore
+    if (hasMore && !isLoading) { 
+      fetchListings(true); 
     }
   };
 
@@ -150,7 +144,7 @@ function ListingsPageContent() {
         </p>
       </div>
 
-      {isLoading && listings.length === 0 ? ( // Show skeleton only on initial load
+      {isLoading && listings.length === 0 ? ( 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {Array.from({ length: 8 }).map((_, index) => (
             <Card key={index} className="overflow-hidden h-full flex flex-col">
@@ -177,13 +171,16 @@ function ListingsPageContent() {
               <Button
                 variant="outline"
                 onClick={handleLoadMore}
-                disabled={isLoading} // Disable if an initial load is happening
+                disabled={isLoading} 
                 className="text-lg px-8 py-3"
               >
                 {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ArrowRight className="mr-2 h-5 w-5" />}
                 Load More Items
               </Button>
             </div>
+          )}
+           {!hasMore && listings.length > 0 && (
+            <p className="text-center text-muted-foreground mt-12">No more items to load.</p>
           )}
         </>
       ) : (
@@ -203,10 +200,10 @@ function ListingsPageContent() {
 
 export default function ListingsPage() {
   return (
-    // Suspense for searchParams
     <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /> Loading listings...</div>}>
       <ListingsPageContent />
     </Suspense>
   );
 }
 
+    
