@@ -3,46 +3,48 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default deny all unless explicitly allowed by a more specific rule
-    match /{document=**} {
-      allow read, write: if false;
-    }
 
-    // Users collection
-    // - Authenticated users can read any user profile (e.g., for seller info, chat participant details)
-    // - Only the user themselves can create or update their own profile document
+    // Users Collection
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow create, update: if request.auth != null && request.auth.uid == userId;
-      // Deleting user documents via client-side rules is generally not recommended.
-      // Handle user deletion through a backend function if necessary.
-    }
-
-    // Listings collection
-    // - Anyone can read listings (even unauthenticated users)
-    // - Authenticated users can create listings, provided the sellerId matches their UID
-    // - Only the authenticated seller can update or delete their own listing
-    match /listings/{listingId} {
+      // Anyone can read user profiles (e.g., for seller info)
       allow read: if true;
-      allow create: if request.auth != null && request.resource.data.sellerId == request.auth.uid;
-      allow update: if request.auth != null && resource.data.sellerId == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.sellerId == request.auth.uid;
+      // Only the authenticated user can create or update their own profile
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      // Users cannot delete their profiles through the client
+      allow delete: if false;
     }
 
-    // Conversations collection
-    // - Users can only read, create, or update conversations they are a participant in
+    // Listings Collection
+    match /listings/{listingId} {
+      // Anyone can read listings
+      allow read: if true;
+      // Authenticated users can create listings
+      allow create: if request.auth != null;
+      // Only the seller can update or delete their own listing
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.sellerId;
+    }
+
+    // Conversations Collection
     match /conversations/{conversationId} {
-      allow read, create, update: if request.auth != null && request.auth.uid in resource.data.participantUids;
-      // Consider rules for deleting conversations if needed.
+      // Only participants can read a conversation
+      allow read: if request.auth != null && request.auth.uid in resource.data.participantUids;
+      // Participants can create conversations - ensure participantUids includes the creator
+      allow create: if request.auth != null && request.auth.uid in request.resource.data.participantUids;
+      // Only participants can update (e.g., lastMessage, unreadCount)
+      allow update: if request.auth != null && request.auth.uid in resource.data.participantUids;
+      // Participants cannot delete conversations directly
+      allow delete: if false;
     }
 
-    // Messages subcollection within conversations
-    // - Users can read and create messages in conversations they are a participant in
-    // - (Update/Delete might need more granular control, e.g., only sender can edit/delete their own message)
+    // Messages Subcollection (within Conversations)
     match /conversations/{conversationId}/messages/{messageId} {
-      allow read, create: if request.auth != null && get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantUids.hasAny([request.auth.uid]);
-      // Example for allowing sender to update/delete their own messages:
-      // allow update, delete: if request.auth != null && resource.data.senderId == request.auth.uid;
+      // Only participants of the parent conversation can read messages
+      allow read: if request.auth != null && get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantUids.hasAny([request.auth.uid]);
+      // Only participants can create messages in their conversation,
+      // and the senderId of the new message must be the authenticated user.
+      allow create: if request.auth != null && request.resource.data.senderId == request.auth.uid && get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantUids.hasAny([request.auth.uid]);
+      // Messages are immutable
+      allow update, delete: if false;
     }
   }
 }
