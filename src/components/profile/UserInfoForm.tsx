@@ -11,20 +11,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/use-auth';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, Camera } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ChangeEvent, useState, useEffect } from 'react';
 import type { User as AppUser, UserYear } from '@/types';
 import { userYears } from '@/types'; 
-import Image from 'next/image'; 
+import Image from 'next/image'; // Keep if used for preview directly, or remove if AvatarImage handles it
 
 const profileSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters."),
+  name: z.string().min(2, "Name must be at least 2 characters.").max(50, "Name is too long."),
   year: z.enum(userYears, { required_error: "Please select your year of study." }),
-  phone: z.string().optional().refine(val => !val || /^\d{10,15}$/.test(val), {
-    message: "Invalid phone number format (10-15 digits)."
-  }),
-  avatarUrl: z.string().url("Invalid URL for pasted link.").optional().or(z.literal('')),
+  phone: z.string().optional().refine(val => !val || /^\d{10,15}$/.test(val), { // Allow empty string
+    message: "Invalid phone number (10-15 digits, or leave blank)."
+  }).transform(val => val || ""), // Ensure empty string if undefined/null
+  avatarUrl: z.string().url("Invalid URL. Please provide a valid image URL or leave blank to keep current.").optional().or(z.literal('')),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -79,7 +79,7 @@ export function UserInfoForm() {
         name: user.name || '',
         year: user.year || undefined,
         phone: user.contactInfo?.phone || '',
-        avatarUrl: user.avatarUrl || '',
+        avatarUrl: user.avatarUrl || '', // Use current avatarUrl or empty if none
       });
       setAvatarPreview(user.avatarUrl || null);
     }
@@ -91,7 +91,12 @@ export function UserInfoForm() {
     if (file) {
       if (!isCloudinaryConfigured) {
         toast({ title: "Avatar Upload Unavailable", description: "Avatar upload service is not configured. Please use the URL field or contact support.", variant: "destructive", duration: 7000});
-        event.target.value = ''; // Clear the file input
+        event.target.value = ''; 
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit for avatars
+        toast({ title: "File Too Large", description: "Avatar image size should not exceed 2MB.", variant: "destructive"});
+        event.target.value = '';
         return;
       }
       setAvatarFile(file);
@@ -101,13 +106,19 @@ export function UserInfoForm() {
       };
       reader.readAsDataURL(file);
       form.setValue('avatarUrl', ''); 
+      form.clearErrors('avatarUrl');
     }
   };
 
   const handlePastedAvatarUrl = (url: string) => {
     form.setValue('avatarUrl', url);
-    setAvatarPreview(url);
-    setAvatarFile(null); 
+    if (url) {
+        setAvatarPreview(url);
+        setAvatarFile(null); 
+        form.clearErrors('avatarUrl');
+    } else {
+        setAvatarPreview(user?.avatarUrl || null); // Revert to original if URL is cleared, or null if no original
+    }
   }
 
   const onSubmit = async (data: ProfileFormValues) => {
@@ -119,22 +130,29 @@ export function UserInfoForm() {
     }
     setFormLoading(true);
     
-    let newAvatarCloudinaryUrl: string | undefined = data.avatarUrl;
+    // Determine the final avatar URL. If a file is uploaded, it takes precedence.
+    // If a URL is pasted in data.avatarUrl, it's used.
+    // If data.avatarUrl is empty, it means user wants to keep current or remove if no file.
+    let finalAvatarUrl: string | null | undefined = data.avatarUrl; // Can be empty string from form
 
     try {
       if (avatarFile) {
-        newAvatarCloudinaryUrl = await uploadAvatarToCloudinary(avatarFile);
+        finalAvatarUrl = await uploadAvatarToCloudinary(avatarFile);
       }
-
-      const profileUpdateData: Partial<AppUser> = {
+      
+      // If finalAvatarUrl is an empty string from the form (and no file was uploaded), treat it as removal.
+      // If it's undefined (e.g. field not touched and no file), it means keep current.
+      // updateUserProfile in AuthContext handles null for removal or undefined for no change.
+      const updatePayload: Partial<AppUser> = {
         name: data.name,
         year: data.year,
-        contactInfo: { phone: data.phone || undefined },
-        avatarUrl: newAvatarCloudinaryUrl || user.avatarUrl,
+        contactInfo: { phone: data.phone || undefined }, // Send undefined if phone is empty string
+        avatarUrl: finalAvatarUrl === '' ? undefined : finalAvatarUrl, // Send undefined to remove, else the URL
       };
       
-      await updateUserProfile(profileUpdateData); // Removed avatarFile from here as it's handled by newAvatarCloudinaryUrl
-      setAvatarFile(null);
+      await updateUserProfile(updatePayload); 
+      setAvatarFile(null); // Clear file after successful upload
+      // form.reset with new user data will happen via useEffect watching `user`
 
     } catch (error: any) {
         console.error("Failed to update profile:", error);
@@ -159,67 +177,62 @@ export function UserInfoForm() {
     <Card>
       <CardHeader>
         <CardTitle>Profile Information</CardTitle>
-        <CardDescription>Update your personal details. Your MLRIT email ({user.email}) and branch cannot be changed here.</CardDescription>
+        <CardDescription>Update your personal details. Your MLRIT email ({user.email}) and branch ({user.branch || 'Not set'}) cannot be changed here.</CardDescription>
       </CardHeader>
       <CardContent>
         {!isCloudinaryConfigured && (
             <div className="mb-6 p-3 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 rounded-md flex items-start">
-                <AlertTriangle className="h-5 w-5 mr-3 mt-0.5" />
+                <AlertTriangle className="h-5 w-5 mr-3 mt-0.5 shrink-0" />
                 <div>
                 <p className="font-semibold">Avatar Uploads Disabled</p>
-                <p className="text-sm">Direct avatar uploads are currently unavailable due to a configuration issue. You can still update your avatar by pasting an image URL.</p>
+                <p className="text-sm">Direct avatar uploads are currently unavailable. Please paste an image URL instead. Contact support if this issue persists.</p>
                 </div>
             </div>
         )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <FormItem className="flex flex-col items-center">
-              <FormLabel>Profile Picture</FormLabel>
-              <FormControl>
-                <div className="mt-2 flex flex-col items-center gap-4">
-                  <Avatar className="h-32 w-32">
-                    {avatarPreview ? (
-                       <Image src={avatarPreview} alt={user.name || "User Avatar"} layout="fill" objectFit="cover" className="rounded-full" data-ai-hint="user avatar"/>
-                    ) : (
-                      <AvatarFallback className="text-3xl">
-                        {getInitials(form.getValues('name') || user.name)}
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
-                  <Label 
-                    htmlFor="avatar-upload"
-                    className={`cursor-pointer text-sm text-primary hover:underline ${!isCloudinaryConfigured ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    Change Picture
+            <FormItem className="flex flex-col items-center space-y-4">
+              <FormLabel className="text-center">Profile Picture</FormLabel>
+              <Avatar className="h-32 w-32">
+                <AvatarImage src={avatarPreview || undefined} alt={user.name || "User Avatar"} />
+                <AvatarFallback className="text-3xl">
+                  {getInitials(form.getValues('name') || user.name)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col items-center gap-2 w-full max-w-xs">
+                <Button type="button" variant="outline" size="sm" asChild className={`${!isCloudinaryConfigured ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <Label htmlFor="avatar-upload" className={`cursor-pointer ${!isCloudinaryConfigured ? 'cursor-not-allowed' : ''}`}>
+                    <Camera className="mr-2 h-4 w-4" /> Upload New
                     <Input 
                       id="avatar-upload" 
                       type="file" 
                       className="hidden" 
-                      accept="image/*"
+                      accept="image/png, image/jpeg"
                       onChange={handleAvatarUpload}
                       disabled={formLoading || !isCloudinaryConfigured}
                     />
                   </Label>
-                  <FormField
-                    control={form.control}
-                    name="avatarUrl"
-                    render={({ field }) => (
-                       <Input 
-                          type="text" 
-                          placeholder="Or paste image URL" 
-                          className="mt-1 text-xs w-full max-w-xs"
-                          value={field.value || ''}
-                          onChange={(e) => {
-                            field.onChange(e.target.value);
-                            handlePastedAvatarUrl(e.target.value);
-                          }}
-                          disabled={formLoading || !!avatarFile}
-                        />
-                    )}
-                  />
-                   <FormMessage>{form.formState.errors.avatarUrl?.message}</FormMessage>
-                </div>
-              </FormControl>
+                </Button>
+                <span className="text-xs text-muted-foreground">OR</span>
+                <FormField
+                  control={form.control}
+                  name="avatarUrl"
+                  render={({ field }) => (
+                     <Input 
+                        type="text" 
+                        placeholder="Paste image URL" 
+                        className="text-sm"
+                        value={field.value || ''}
+                        onChange={(e) => {
+                          field.onChange(e.target.value);
+                          handlePastedAvatarUrl(e.target.value);
+                        }}
+                        disabled={formLoading || !!avatarFile}
+                      />
+                  )}
+                />
+                 <FormMessage>{form.formState.errors.avatarUrl?.message}</FormMessage>
+              </div>
             </FormItem>
 
             <FormField
@@ -251,7 +264,6 @@ export function UserInfoForm() {
                     <FormLabel>Year</FormLabel>
                     <Select 
                       onValueChange={field.onChange} 
-                      defaultValue={field.value} 
                       value={field.value} 
                       disabled={formLoading}
                     >
@@ -283,9 +295,9 @@ export function UserInfoForm() {
               name="phone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Phone Number (Optional)</FormLabel>
+                  <FormLabel>Phone Number</FormLabel>
                   <FormControl>
-                    <Input type="tel" placeholder="e.g., 9876543210" {...field} value={field.value || ''} disabled={formLoading} />
+                    <Input type="tel" placeholder="e.g., 9876543210 (Optional)" {...field} value={field.value || ''} disabled={formLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

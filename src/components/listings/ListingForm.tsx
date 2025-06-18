@@ -25,7 +25,7 @@ import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/fi
 const listingSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters.").max(100, "Title too long."),
   description: z.string().min(20, "Description must be at least 20 characters.").max(1000, "Description too long."),
-  price: z.coerce.number().positive("Price must be a positive number."),
+  price: z.coerce.number().positive("Price must be a positive number.").min(0.01, "Price must be greater than 0."),
   category: z.enum(mockCategories as [string, ...string[]], { required_error: "Category is required." }),
   imageUrl: z.string().url("Image URL is required if not uploading a file.").optional().or(z.literal('')),
 });
@@ -79,7 +79,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
     defaultValues: {
       title: '',
       description: '',
-      price: 0,
+      price: undefined, // Use undefined for number to allow placeholder
       category: undefined,
       imageUrl: '',
     },
@@ -100,7 +100,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
       form.reset({
         title: '',
         description: '',
-        price: 0,
+        price: undefined,
         category: undefined,
         imageUrl: '',
       });
@@ -114,7 +114,12 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
     if (file) {
       if (!isCloudinaryConfigured) {
         toast({ title: "Image Upload Unavailable", description: "Image upload service is not configured. Please use the URL field or contact support.", variant: "destructive", duration: 7000});
-        event.target.value = ''; // Clear the file input
+        event.target.value = ''; 
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) { // 5MB size limit
+        toast({ title: "File Too Large", description: "Image size should not exceed 5MB.", variant: "destructive"});
+        event.target.value = '';
         return;
       }
       setImageFile(file);
@@ -124,13 +129,19 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
       };
       reader.readAsDataURL(file);
       form.setValue('imageUrl', ''); 
+      form.clearErrors('imageUrl'); 
     }
   };
   
   const handlePastedUrl = (url: string) => {
     form.setValue('imageUrl', url);
-    setImagePreview(url);
-    setImageFile(null); 
+    if (url) {
+        setImagePreview(url);
+        setImageFile(null); 
+        form.clearErrors('imageUrl');
+    } else {
+        setImagePreview(null);
+    }
   }
 
   const onSubmit = async (data: ListingFormValues) => {
@@ -169,7 +180,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
       }
 
       if (!finalImageUrl) {
-        toast({ title: "Image Missing", description: "An image URL could not be determined.", variant: "destructive" });
+        toast({ title: "Image Missing", description: "An image URL could not be determined. Please ensure the URL is valid or upload an image.", variant: "destructive" });
         setIsLoading(false);
         return;
       }
@@ -204,6 +215,9 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
       } else if (listingId) {
         router.push(`/listings/${listingId}`);
       }
+      form.reset();
+      setImagePreview(null);
+      setImageFile(null);
     } catch (error: any) {
       console.error("Error submitting listing:", error);
       toast({ title: "Submission Failed", description: error.message || "Could not save the listing.", variant: "destructive" });
@@ -221,10 +235,10 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
       <CardContent>
         {!isCloudinaryConfigured && (
           <div className="mb-6 p-3 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 rounded-md flex items-start">
-            <AlertTriangle className="h-5 w-5 mr-3 mt-0.5" />
+            <AlertTriangle className="h-5 w-5 mr-3 mt-0.5 shrink-0" />
             <div>
               <p className="font-semibold">Image Uploads Disabled</p>
-              <p className="text-sm">Direct image uploads are currently unavailable due to a configuration issue. You can still list items by pasting an image URL.</p>
+              <p className="text-sm">Direct image uploads are currently unavailable. Please paste an image URL instead. Contact support if this issue persists.</p>
             </div>
           </div>
         )}
@@ -279,7 +293,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} disabled={isLoading || isUploadingImage}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isLoading || isUploadingImage}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a category" />
@@ -303,7 +317,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                 <div>
                     <Label 
                       htmlFor="image-upload"
-                      className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg  bg-muted/50  transition-colors ${isUploadingImage || !isCloudinaryConfigured ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:bg-muted/75'}`}
+                      className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg bg-muted/50 transition-colors ${isUploadingImage || !isCloudinaryConfigured ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:bg-muted/75'}`}
                     >
                     {isUploadingImage ? (
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
@@ -323,7 +337,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                         id="image-upload" 
                         type="file" 
                         className="hidden" 
-                        accept="image/*"
+                        accept="image/png, image/jpeg, image/gif"
                         onChange={handleImageUpload}
                         disabled={isLoading || isUploadingImage || !isCloudinaryConfigured}
                     />
@@ -347,7 +361,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                     />
                 </div>
                 </FormControl>
-                <FormDescription>Upload an image (if available) or provide a URL for your item. Uploaded images take precedence.</FormDescription>
+                <FormDescription>Upload an image (if Cloudinary is configured and enabled) or provide a URL. Uploaded images take precedence. Max 5MB.</FormDescription>
                 <FormMessage>{form.formState.errors.imageUrl?.message}</FormMessage>
             </FormItem>
 
