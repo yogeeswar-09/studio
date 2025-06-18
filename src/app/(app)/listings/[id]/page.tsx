@@ -30,70 +30,88 @@ export default function ListingDetailPage() {
   const id = params.id as string;
 
   useEffect(() => {
-    // Validate the ID before attempting to fetch
-    if (!id || typeof id !== 'string' || id.trim() === '') {
-      console.warn("ListingDetailPage: Invalid or empty ID received in params:", id);
-      setIsLoading(false);
-      setListing(null);
-      // Optionally, show a specific message or redirect
-      // toast({ title: "Invalid Link", description: "The link to this listing is invalid.", variant: "destructive" });
-      // router.push('/listings?error=invalid_id'); // Consider if auto-redirect is desired
-      return;
-    }
-
     const fetchListingAndSeller = async () => {
+      if (!id || typeof id !== 'string' || id.trim() === '') {
+        console.warn("ListingDetailPage: Invalid or empty ID received in params:", id);
+        setIsLoading(false);
+        setListing(null);
+        return;
+      }
+
       console.log("ListingDetailPage: Attempting to fetch listing with ID:", id);
       setIsLoading(true);
-      setListing(null); // Reset listing state before new fetch
-      setSeller(null);  // Reset seller state before new fetch
+      setListing(null);
+      setSeller(null);
 
+      let fetchedListingData: Listing | null = null;
+
+      // Step 1: Fetch Listing
       try {
         const listingRef = doc(db, "listings", id);
         const listingSnap = await getDoc(listingRef);
 
         if (listingSnap.exists()) {
-          console.log("ListingDetailPage: Document found for ID:", id, listingSnap.data());
-          const fetchedListingData = listingSnap.data();
-          const fetchedListing = {
+          const rawData = listingSnap.data();
+          console.log("ListingDetailPage: Listing document found for ID:", id, rawData);
+          fetchedListingData = {
             id: listingSnap.id,
-            ...fetchedListingData,
-            createdAt: (fetchedListingData.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
-            updatedAt: (fetchedListingData.updatedAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+            ...rawData,
+            createdAt: (rawData.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+            updatedAt: (rawData.updatedAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
           } as Listing;
-          setListing(fetchedListing);
-
-          if (fetchedListing.sellerId) {
-            const sellerRef = doc(db, "users", fetchedListing.sellerId);
-            const sellerSnap = await getDoc(sellerRef);
-            if (sellerSnap.exists()) {
-              setSeller({ uid: sellerSnap.id, ...sellerSnap.data() } as User);
-              console.log("ListingDetailPage: Seller details found for ID:", fetchedListing.sellerId);
-            } else {
-              console.warn("ListingDetailPage: Seller not found for ID:", fetchedListing.sellerId);
-              setSeller(null);
-            }
-          }
+          setListing(fetchedListingData);
         } else {
           console.warn("ListingDetailPage: No such listing document found for ID:", id);
-          setListing(null); 
-          // The UI will show "Listing not found" because listing state is null and isLoading will be false.
+          setListing(null);
+          setIsLoading(false); // Stop loading if listing not found
+          return; // Exit early
         }
       } catch (error: any) {
-        console.error("ListingDetailPage: Error fetching listing details for ID:", id, error);
-        setListing(null); 
+        console.error(`ListingDetailPage: Error fetching MAIN LISTING (ID: ${id}) details:`, error);
+        setListing(null);
         toast({
-          title: "Error Loading Listing",
+          title: "Error Loading Item",
           description: `Could not load item details: ${error.message || 'Please try again.'}`,
           variant: "destructive",
         });
-      } finally {
         setIsLoading(false);
-        console.log("ListingDetailPage: Fetch attempt finished for ID:", id, "isLoading is now", false);
+        return; // Exit if listing fetch fails
       }
+
+      // Step 2: Fetch Seller, only if listing was fetched successfully
+      if (fetchedListingData && fetchedListingData.sellerId) {
+        try {
+          console.log("ListingDetailPage: Attempting to fetch seller with ID:", fetchedListingData.sellerId);
+          const sellerRef = doc(db, "users", fetchedListingData.sellerId);
+          const sellerSnap = await getDoc(sellerRef);
+          if (sellerSnap.exists()) {
+            setSeller({ uid: sellerSnap.id, ...sellerSnap.data() } as User);
+            console.log("ListingDetailPage: Seller details found for ID:", fetchedListingData.sellerId);
+          } else {
+            console.warn("ListingDetailPage: Seller document not found for ID:", fetchedListingData.sellerId);
+            setSeller(null);
+          }
+        } catch (error: any) {
+          console.error(`ListingDetailPage: Error fetching SELLER (ID: ${fetchedListingData.sellerId}) details:`, error);
+          setSeller(null);
+          toast({
+            title: "Error Loading Seller Info",
+            description: `Could not load seller details: ${error.message || 'Please try again.'}`,
+            variant: "destructive",
+          });
+          // The listing might still be displayable even if seller info fails, so don't return.
+        }
+      } else if (fetchedListingData && !fetchedListingData.sellerId) {
+         console.warn("ListingDetailPage: Listing was fetched but has no sellerId property.");
+         setSeller(null);
+      }
+
+      setIsLoading(false);
+      console.log("ListingDetailPage: All fetch attempts finished for listing ID:", id, "isLoading is now", false);
     };
 
     fetchListingAndSeller();
-  }, [id, toast]); // `id` is the primary dependency for re-fetching. `toast` is included as it's used.
+  }, [id, toast]);
 
   if (isLoading) {
     return (
@@ -132,8 +150,6 @@ export default function ListingDetailPage() {
   }
 
   if (!listing) {
-    // This state is reached if isLoading is false and listing is still null
-    // (e.g., ID was invalid, document not found, or fetch error)
     return (
       <div className="container mx-auto py-8 text-center">
         <AlertTriangle className="mx-auto h-16 w-16 text-destructive mb-4" />
@@ -159,7 +175,6 @@ export default function ListingDetailPage() {
         <ArrowLeft className="mr-2 h-4 w-4" /> Back
       </Button>
       <div className="grid md:grid-cols-5 gap-8 lg:gap-12">
-        {/* Image Gallery Section */}
         <div className="md:col-span-3">
           <div className="relative w-full aspect-video overflow-hidden rounded-lg shadow-lg bg-muted mb-4">
             <Image
@@ -177,10 +192,8 @@ export default function ListingDetailPage() {
                 </div>
             )}
           </div>
-          {/* Placeholder for more images if you implement a gallery */}
         </div>
 
-        {/* Details Section */}
         <div className="md:col-span-2">
           <Card className="shadow-xl">
             <CardHeader>
@@ -196,7 +209,7 @@ export default function ListingDetailPage() {
             <CardContent>
               <p className="text-muted-foreground leading-relaxed mb-6">{listing.description}</p>
               
-              {seller && (
+              {seller ? (
                 <div className="border-t pt-6">
                   <h3 className="text-md font-semibold text-foreground mb-3">Seller Information</h3>
                   <div className="flex items-center space-x-3">
@@ -209,6 +222,11 @@ export default function ListingDetailPage() {
                       <p className="text-sm text-muted-foreground">{seller.email}</p>
                     </div>
                   </div>
+                </div>
+              ) : (
+                <div className="border-t pt-6">
+                   <h3 className="text-md font-semibold text-foreground mb-3">Seller Information</h3>
+                   <p className="text-sm text-muted-foreground">Seller details could not be loaded.</p>
                 </div>
               )}
 
@@ -236,7 +254,7 @@ export default function ListingDetailPage() {
                 ) : listing.status !== 'sold' ? (
                   <>
                     <Link href={`/chat?newChatWith=${listing.sellerId}&itemId=${listing.id}`} passHref legacyBehavior>
-                      <Button size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-base" disabled={listing.status === 'sold'}>
+                      <Button size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-base" disabled={listing.status === 'sold' || !listing.sellerId}>
                         <MessageCircle className="mr-2 h-5 w-5" /> Chat with Seller
                       </Button>
                     </Link>
