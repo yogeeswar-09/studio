@@ -16,14 +16,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ChangeEvent, useState, useEffect } from 'react';
 import type { User as AppUser, UserYear } from '@/types';
 import { userYears } from '@/types'; 
-import Image from 'next/image'; // Keep if used for preview directly, or remove if AvatarImage handles it
+// import Image from 'next/image'; // Not directly used for preview, AvatarImage handles it
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters.").max(50, "Name is too long."),
   year: z.enum(userYears, { required_error: "Please select your year of study." }),
-  phone: z.string().optional().refine(val => !val || /^\d{10,15}$/.test(val), { // Allow empty string
+  phone: z.string().optional().refine(val => !val || /^\d{10,15}$/.test(val), {
     message: "Invalid phone number (10-15 digits, or leave blank)."
-  }).transform(val => val || ""), // Ensure empty string if undefined/null
+  }).transform(val => val || ""), 
   avatarUrl: z.string().url("Invalid URL. Please provide a valid image URL or leave blank to keep current.").optional().or(z.literal('')),
 });
 
@@ -79,9 +79,10 @@ export function UserInfoForm() {
         name: user.name || '',
         year: user.year || undefined,
         phone: user.contactInfo?.phone || '',
-        avatarUrl: user.avatarUrl || '', // Use current avatarUrl or empty if none
+        avatarUrl: user.avatarUrl || '', 
       });
       setAvatarPreview(user.avatarUrl || null);
+      setAvatarFile(null); // Clear any pending file on user change
     }
   }, [user, form]);
 
@@ -117,7 +118,7 @@ export function UserInfoForm() {
         setAvatarFile(null); 
         form.clearErrors('avatarUrl');
     } else {
-        setAvatarPreview(user?.avatarUrl || null); // Revert to original if URL is cleared, or null if no original
+        setAvatarPreview(user?.avatarUrl || null); 
     }
   }
 
@@ -130,33 +131,31 @@ export function UserInfoForm() {
     }
     setFormLoading(true);
     
-    // Determine the final avatar URL. If a file is uploaded, it takes precedence.
-    // If a URL is pasted in data.avatarUrl, it's used.
-    // If data.avatarUrl is empty, it means user wants to keep current or remove if no file.
-    let finalAvatarUrl: string | null | undefined = data.avatarUrl; // Can be empty string from form
+    let finalAvatarUrlForUpdate: string | undefined | null = data.avatarUrl;
+
+    if (avatarFile) {
+      finalAvatarUrlForUpdate = await uploadAvatarToCloudinary(avatarFile);
+    } else if (data.avatarUrl === '') {
+      finalAvatarUrlForUpdate = null; // Indicates removal
+    } else if (data.avatarUrl === user.avatarUrl) {
+      finalAvatarUrlForUpdate = undefined; // Indicates no change from current
+    }
+    // If data.avatarUrl is a new URL, finalAvatarUrlForUpdate will hold it.
 
     try {
-      if (avatarFile) {
-        finalAvatarUrl = await uploadAvatarToCloudinary(avatarFile);
-      }
-      
-      // If finalAvatarUrl is an empty string from the form (and no file was uploaded), treat it as removal.
-      // If it's undefined (e.g. field not touched and no file), it means keep current.
-      // updateUserProfile in AuthContext handles null for removal or undefined for no change.
       const updatePayload: Partial<AppUser> = {
         name: data.name,
         year: data.year,
-        contactInfo: { phone: data.phone || undefined }, // Send undefined if phone is empty string
-        avatarUrl: finalAvatarUrl === '' ? undefined : finalAvatarUrl, // Send undefined to remove, else the URL
+        contactInfo: { phone: data.phone || undefined }, 
+        avatarUrl: finalAvatarUrlForUpdate, 
       };
       
       await updateUserProfile(updatePayload); 
-      setAvatarFile(null); // Clear file after successful upload
-      // form.reset with new user data will happen via useEffect watching `user`
+      setAvatarFile(null); 
 
     } catch (error: any) {
         console.error("Failed to update profile:", error);
-        toast({ title: "Update Failed", description: error.message || "Could not update your profile.", variant: "destructive" });
+        // Toast is handled by updateUserProfile in AuthContext
     } finally {
         setFormLoading(false);
     }

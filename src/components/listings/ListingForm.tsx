@@ -25,7 +25,7 @@ import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/fi
 const listingSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters.").max(100, "Title too long."),
   description: z.string().min(20, "Description must be at least 20 characters.").max(1000, "Description too long."),
-  price: z.coerce.number().positive("Price must be a positive number.").min(0.01, "Price must be greater than 0."),
+  price: z.coerce.number({invalid_type_error: "Price must be a number."}).positive("Price must be a positive number.").min(0.01, "Price must be greater than 0."),
   category: z.enum(mockCategories as [string, ...string[]], { required_error: "Category is required." }),
   imageUrl: z.string().url("Image URL is required if not uploading a file.").optional().or(z.literal('')),
 });
@@ -79,7 +79,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
     defaultValues: {
       title: '',
       description: '',
-      price: undefined, // Use undefined for number to allow placeholder
+      price: undefined, 
       category: undefined,
       imageUrl: '',
     },
@@ -208,6 +208,9 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
         const docRef = await addDoc(collection(db, "listings"), listingData);
         listingId = docRef.id;
         toast({ title: "Listing Created!", description: `"${data.title}" has been listed.` });
+        form.reset(); // Reset form only on new listing creation
+        setImagePreview(null);
+        setImageFile(null);
       }
 
       if (onSubmitSuccess && listingId) {
@@ -215,9 +218,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
       } else if (listingId) {
         router.push(`/listings/${listingId}`);
       }
-      form.reset();
-      setImagePreview(null);
-      setImageFile(null);
+      
     } catch (error: any) {
       console.error("Error submitting listing:", error);
       toast({ title: "Submission Failed", description: error.message || "Could not save the listing.", variant: "destructive" });
@@ -280,7 +281,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                   <FormItem>
                     <FormLabel>Price (₹)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="e.g., 1500.00" {...field} disabled={isLoading || isUploadingImage} />
+                      <Input type="number" step="0.01" placeholder="e.g., 1500.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} disabled={isLoading || isUploadingImage} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
