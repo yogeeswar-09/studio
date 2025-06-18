@@ -95,6 +95,27 @@ body {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground; /* Apply base text color */
+    background: linear-gradient(-45deg, 
+      hsla(var(--primary), 0.03), 
+      hsla(var(--accent), 0.03), 
+      hsla(var(--secondary), 0.05), 
+      hsl(var(--background))
+    );
+    background-size: 400% 400%;
+    animation: gradientBG 25s ease infinite;
+    min-height: 100vh; /* Ensure body covers full viewport height */
+  }
+}
+
+@keyframes gradientBG {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }
