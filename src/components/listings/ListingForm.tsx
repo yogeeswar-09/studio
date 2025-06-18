@@ -16,7 +16,7 @@ import { mockCategories } from '@/lib/mock-data';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { Loader2, UploadCloud } from 'lucide-react';
+import { Loader2, UploadCloud, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import { useState, ChangeEvent, useEffect } from 'react';
 import { db } from '@/lib/firebase';
@@ -39,16 +39,18 @@ interface ListingFormProps {
 
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+const isCloudinaryConfigured = CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET;
 
 async function uploadToCloudinary(file: File): Promise<string> {
-  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-    throw new Error("Cloudinary environment variables not set.");
+  if (!isCloudinaryConfigured) {
+    console.error("Cloudinary environment variables NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME or NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET are not set.");
+    throw new Error("Image upload service is not configured. Please contact support.");
   }
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET!);
 
-  const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME!}/image/upload`, {
     method: 'POST',
     body: formData,
   });
@@ -110,6 +112,11 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
   const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (!isCloudinaryConfigured) {
+        toast({ title: "Image Upload Unavailable", description: "Image upload service is not configured. Please use the URL field or contact support.", variant: "destructive", duration: 7000});
+        event.target.value = ''; // Clear the file input
+        return;
+      }
       setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -132,12 +139,11 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
       return;
     }
 
-    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-      toast({ title: "Configuration Error", description: "Cloudinary is not configured for image uploads. Please contact support.", variant: "destructive" });
-      console.error("Cloudinary environment variables NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME or NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET are not set.");
+    if (imageFile && !isCloudinaryConfigured) {
+      toast({ title: "Configuration Error", description: "Cannot upload image: Cloudinary is not configured. Please use the URL field or contact support.", variant: "destructive" });
       return;
     }
-
+    
     if (!imageFile && !data.imageUrl) {
         form.setError("imageUrl", { type: "manual", message: "Please upload an image or provide an image URL."});
         toast({ title: "Image Required", description: "Please upload an image or provide an image URL for your listing.", variant: "destructive" });
@@ -160,6 +166,12 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
         } finally {
           setIsUploadingImage(false);
         }
+      }
+
+      if (!finalImageUrl) {
+        toast({ title: "Image Missing", description: "An image URL could not be determined.", variant: "destructive" });
+        setIsLoading(false);
+        return;
       }
 
       const listingData: Omit<Listing, 'id' | 'seller' | 'createdAt' | 'updatedAt'> & { createdAt?: any, updatedAt?: any } = {
@@ -187,9 +199,9 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
         toast({ title: "Listing Created!", description: `"${data.title}" has been listed.` });
       }
 
-      if (onSubmitSuccess) {
-        onSubmitSuccess(listingId!);
-      } else {
+      if (onSubmitSuccess && listingId) {
+        onSubmitSuccess(listingId);
+      } else if (listingId) {
         router.push(`/listings/${listingId}`);
       }
     } catch (error: any) {
@@ -207,6 +219,15 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
         <CardDescription>Fill in the details below to sell your item on CampusKart.</CardDescription>
       </CardHeader>
       <CardContent>
+        {!isCloudinaryConfigured && (
+          <div className="mb-6 p-3 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 rounded-md flex items-start">
+            <AlertTriangle className="h-5 w-5 mr-3 mt-0.5" />
+            <div>
+              <p className="font-semibold">Image Uploads Disabled</p>
+              <p className="text-sm">Direct image uploads are currently unavailable due to a configuration issue. You can still list items by pasting an image URL.</p>
+            </div>
+          </div>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <FormField
@@ -282,7 +303,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                 <div>
                     <Label 
                       htmlFor="image-upload"
-                      className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg  bg-muted/50  transition-colors ${isUploadingImage ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-muted/75'}`}
+                      className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg  bg-muted/50  transition-colors ${isUploadingImage || !isCloudinaryConfigured ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:bg-muted/75'}`}
                     >
                     {isUploadingImage ? (
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
@@ -304,7 +325,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                         className="hidden" 
                         accept="image/*"
                         onChange={handleImageUpload}
-                        disabled={isLoading || isUploadingImage}
+                        disabled={isLoading || isUploadingImage || !isCloudinaryConfigured}
                     />
                     </Label>
                     <FormField
@@ -326,7 +347,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                     />
                 </div>
                 </FormControl>
-                <FormDescription>Upload an image or provide a URL for your item. Uploaded images take precedence.</FormDescription>
+                <FormDescription>Upload an image (if available) or provide a URL for your item. Uploaded images take precedence.</FormDescription>
                 <FormMessage>{form.formState.errors.imageUrl?.message}</FormMessage>
             </FormItem>
 

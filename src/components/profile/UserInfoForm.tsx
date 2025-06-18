@@ -11,16 +11,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/use-auth';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ChangeEvent, useState, useEffect } from 'react';
 import type { User as AppUser, UserYear } from '@/types';
-import { userYears } from '@/types'; // Import userYears
-import Image from 'next/image'; // For preview
+import { userYears } from '@/types'; 
+import Image from 'next/image'; 
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
-  year: z.enum(userYears, { required_error: "Please select your year of study." }), // Add year to schema
+  year: z.enum(userYears, { required_error: "Please select your year of study." }),
   phone: z.string().optional().refine(val => !val || /^\d{10,15}$/.test(val), {
     message: "Invalid phone number format (10-15 digits)."
   }),
@@ -31,16 +31,19 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+const isCloudinaryConfigured = CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET;
+
 
 async function uploadAvatarToCloudinary(file: File): Promise<string> {
-  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-    throw new Error("Cloudinary environment variables not set for avatar upload.");
+  if (!isCloudinaryConfigured) {
+    console.error("Cloudinary environment variables NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME or NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET are not set for avatar upload.");
+    throw new Error("Avatar upload service is not configured. Please contact support.");
   }
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET!);
 
-  const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME!}/image/upload`, {
     method: 'POST',
     body: formData,
   });
@@ -64,7 +67,7 @@ export function UserInfoForm() {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: '',
-      year: undefined, // Initialize year
+      year: undefined,
       phone: '',
       avatarUrl: '',
     },
@@ -74,7 +77,7 @@ export function UserInfoForm() {
     if (user) {
       form.reset({
         name: user.name || '',
-        year: user.year || undefined, // Set year from user data
+        year: user.year || undefined,
         phone: user.contactInfo?.phone || '',
         avatarUrl: user.avatarUrl || '',
       });
@@ -86,6 +89,11 @@ export function UserInfoForm() {
   const handleAvatarUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (!isCloudinaryConfigured) {
+        toast({ title: "Avatar Upload Unavailable", description: "Avatar upload service is not configured. Please use the URL field or contact support.", variant: "destructive", duration: 7000});
+        event.target.value = ''; // Clear the file input
+        return;
+      }
       setAvatarFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -105,9 +113,8 @@ export function UserInfoForm() {
   const onSubmit = async (data: ProfileFormValues) => {
     if (!user || !firebaseUser) return;
 
-    if (avatarFile && (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET)) {
-      toast({ title: "Configuration Error", description: "Cloudinary is not configured for avatar uploads.", variant: "destructive" });
-      console.error("Cloudinary environment variables for avatar upload are not set.");
+    if (avatarFile && !isCloudinaryConfigured) {
+      toast({ title: "Configuration Error", description: "Cannot upload avatar: Cloudinary is not configured. Please use the URL field or contact support.", variant: "destructive" });
       return;
     }
     setFormLoading(true);
@@ -121,12 +128,12 @@ export function UserInfoForm() {
 
       const profileUpdateData: Partial<AppUser> = {
         name: data.name,
-        year: data.year, // Include year in update data
+        year: data.year,
         contactInfo: { phone: data.phone || undefined },
         avatarUrl: newAvatarCloudinaryUrl || user.avatarUrl,
       };
       
-      await updateUserProfile(profileUpdateData, avatarFile);
+      await updateUserProfile(profileUpdateData); // Removed avatarFile from here as it's handled by newAvatarCloudinaryUrl
       setAvatarFile(null);
 
     } catch (error: any) {
@@ -155,6 +162,15 @@ export function UserInfoForm() {
         <CardDescription>Update your personal details. Your MLRIT email ({user.email}) and branch cannot be changed here.</CardDescription>
       </CardHeader>
       <CardContent>
+        {!isCloudinaryConfigured && (
+            <div className="mb-6 p-3 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 rounded-md flex items-start">
+                <AlertTriangle className="h-5 w-5 mr-3 mt-0.5" />
+                <div>
+                <p className="font-semibold">Avatar Uploads Disabled</p>
+                <p className="text-sm">Direct avatar uploads are currently unavailable due to a configuration issue. You can still update your avatar by pasting an image URL.</p>
+                </div>
+            </div>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <FormItem className="flex flex-col items-center">
@@ -172,7 +188,7 @@ export function UserInfoForm() {
                   </Avatar>
                   <Label 
                     htmlFor="avatar-upload"
-                    className="cursor-pointer text-sm text-primary hover:underline"
+                    className={`cursor-pointer text-sm text-primary hover:underline ${!isCloudinaryConfigured ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     Change Picture
                     <Input 
@@ -181,7 +197,7 @@ export function UserInfoForm() {
                       className="hidden" 
                       accept="image/*"
                       onChange={handleAvatarUpload}
-                      disabled={formLoading}
+                      disabled={formLoading || !isCloudinaryConfigured}
                     />
                   </Label>
                   <FormField
