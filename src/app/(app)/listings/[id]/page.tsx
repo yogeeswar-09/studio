@@ -25,54 +25,75 @@ export default function ListingDetailPage() {
   const [listing, setListing] = useState<Listing | null>(null);
   const [seller, setSeller] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast(); // Added useToast hook
+  const { toast } = useToast();
 
   const id = params.id as string;
 
   useEffect(() => {
+    // Validate the ID before attempting to fetch
+    if (!id || typeof id !== 'string' || id.trim() === '') {
+      console.warn("ListingDetailPage: Invalid or empty ID received in params:", id);
+      setIsLoading(false);
+      setListing(null);
+      // Optionally, show a specific message or redirect
+      // toast({ title: "Invalid Link", description: "The link to this listing is invalid.", variant: "destructive" });
+      // router.push('/listings?error=invalid_id'); // Consider if auto-redirect is desired
+      return;
+    }
+
     const fetchListingAndSeller = async () => {
-      if (id) {
-        setIsLoading(true);
-        try {
-          const listingRef = doc(db, "listings", id);
-          const listingSnap = await getDoc(listingRef);
+      console.log("ListingDetailPage: Attempting to fetch listing with ID:", id);
+      setIsLoading(true);
+      setListing(null); // Reset listing state before new fetch
+      setSeller(null);  // Reset seller state before new fetch
 
-          if (listingSnap.exists()) {
-            const fetchedListingData = listingSnap.data();
-            const fetchedListing = {
-              id: listingSnap.id,
-              ...fetchedListingData,
-              createdAt: (fetchedListingData.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
-              updatedAt: (fetchedListingData.updatedAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
-            } as Listing;
-            setListing(fetchedListing);
+      try {
+        const listingRef = doc(db, "listings", id);
+        const listingSnap = await getDoc(listingRef);
 
-            if (fetchedListing.sellerId) {
-              const sellerRef = doc(db, "users", fetchedListing.sellerId);
-              const sellerSnap = await getDoc(sellerRef);
-              if (sellerSnap.exists()) {
-                setSeller({ uid: sellerSnap.id, ...sellerSnap.data() } as User);
-              } else {
-                console.warn("Seller not found for ID:", fetchedListing.sellerId);
-                setSeller(null);
-              }
+        if (listingSnap.exists()) {
+          console.log("ListingDetailPage: Document found for ID:", id, listingSnap.data());
+          const fetchedListingData = listingSnap.data();
+          const fetchedListing = {
+            id: listingSnap.id,
+            ...fetchedListingData,
+            createdAt: (fetchedListingData.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+            updatedAt: (fetchedListingData.updatedAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+          } as Listing;
+          setListing(fetchedListing);
+
+          if (fetchedListing.sellerId) {
+            const sellerRef = doc(db, "users", fetchedListing.sellerId);
+            const sellerSnap = await getDoc(sellerRef);
+            if (sellerSnap.exists()) {
+              setSeller({ uid: sellerSnap.id, ...sellerSnap.data() } as User);
+              console.log("ListingDetailPage: Seller details found for ID:", fetchedListing.sellerId);
+            } else {
+              console.warn("ListingDetailPage: Seller not found for ID:", fetchedListing.sellerId);
+              setSeller(null);
             }
-          } else {
-            console.log("No such listing document!");
-            setListing(null); 
-            router.push('/listings?error=notfound');
           }
-        } catch (error) {
-          console.error("Error fetching listing details:", error);
+        } else {
+          console.warn("ListingDetailPage: No such listing document found for ID:", id);
           setListing(null); 
-        } finally {
-          setIsLoading(false);
+          // The UI will show "Listing not found" because listing state is null and isLoading will be false.
         }
+      } catch (error: any) {
+        console.error("ListingDetailPage: Error fetching listing details for ID:", id, error);
+        setListing(null); 
+        toast({
+          title: "Error Loading Listing",
+          description: `Could not load item details: ${error.message || 'Please try again.'}`,
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+        console.log("ListingDetailPage: Fetch attempt finished for ID:", id, "isLoading is now", false);
       }
     };
 
     fetchListingAndSeller();
-  }, [id, router]);
+  }, [id, toast]); // `id` is the primary dependency for re-fetching. `toast` is included as it's used.
 
   if (isLoading) {
     return (
@@ -111,11 +132,13 @@ export default function ListingDetailPage() {
   }
 
   if (!listing) {
+    // This state is reached if isLoading is false and listing is still null
+    // (e.g., ID was invalid, document not found, or fetch error)
     return (
       <div className="container mx-auto py-8 text-center">
         <AlertTriangle className="mx-auto h-16 w-16 text-destructive mb-4" />
         <h3 className="text-xl font-semibold text-foreground mb-2">Listing not found</h3>
-        <p className="text-muted-foreground">This item may have been removed or the link is incorrect.</p>
+        <p className="text-muted-foreground">This item may have been removed, the link is incorrect, or it could not be loaded.</p>
         <Button onClick={() => router.push('/listings')} className="mt-6">Browse Other Items</Button>
       </div>
     );
@@ -144,7 +167,7 @@ export default function ListingDetailPage() {
               alt={listing.title}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 50vw"
-              className="object-contain" // Changed from object-cover to object-contain
+              className="object-contain"
               priority
               data-ai-hint={`${listing.category.toLowerCase()} detail view`}
             />
