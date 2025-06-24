@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -11,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, LogIn } from 'lucide-react';
 import { FirebaseError } from 'firebase/app';
 import Link from 'next/link';
 
@@ -77,9 +76,12 @@ export function LoginForm() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Login to CampusKart</CardTitle>
-        <CardDescription>Enter your MLRIT email and password to continue.</CardDescription>
+      <CardHeader className="text-center">
+        <div className="mx-auto bg-primary/10 p-3 rounded-full mb-4 w-fit">
+          <LogIn className="h-8 w-8 text-primary" />
+        </div>
+        <CardTitle>Welcome Back!</CardTitle>
+        <CardDescription>Login to your CampusKart account to continue.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -66,7 +65,9 @@ export default function ForgotPasswordPage() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
-        <KeyRound className="mx-auto h-12 w-12 text-primary mb-4" />
+        <div className="mx-auto bg-primary/10 p-3 rounded-full mb-4 w-fit">
+            <KeyRound className="h-8 w-8 text-primary" />
+        </div>
         <CardTitle>Forgot Your Password?</CardTitle>
         <CardDescription>
           No problem! Enter your MLRIT email address below and we&apos;ll send you a link to reset your password.

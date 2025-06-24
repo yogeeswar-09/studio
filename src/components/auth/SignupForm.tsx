@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -12,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, UserPlus } from 'lucide-react';
 import { FirebaseError } from 'firebase/app';
 import { userYears, userBranches, type UserYear, type UserBranch } from '@/types';
 import Link from 'next/link';
@@ -108,9 +107,12 @@ export function SignupForm() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Create an Account</CardTitle>
-        <CardDescription>Join CampusKart using your MLRIT email and details.</CardDescription>
+      <CardHeader className="text-center">
+        <div className="mx-auto bg-primary/10 p-3 rounded-full mb-4 w-fit">
+            <UserPlus className="h-8 w-8 text-primary" />
+        </div>
+        <CardTitle>Join CampusKart</CardTitle>
+        <CardDescription>Create your account to start buying and selling.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -213,4 +215,3 @@ export function SignupForm() {
     </Card>
   );
 }
-
