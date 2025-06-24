@@ -80,7 +80,7 @@ export default function AboutUsPage() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg">
+            <Card id="terms" className="shadow-lg scroll-mt-20">
               <CardHeader>
                 <CardTitle className="text-2xl font-semibold flex items-center">
                    <BookOpenCheck className="mr-3 h-6 w-6 text-muted-foreground" /> Terms & Conditions
