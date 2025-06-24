@@ -95,27 +95,30 @@ body {
     @apply border-border;
   }
   body {
-    @apply text-foreground; /* Apply base text color */
-    background: linear-gradient(-45deg, 
-      hsla(var(--primary), 0.03), 
-      hsla(var(--accent), 0.03), 
-      hsla(var(--secondary), 0.05), 
-      hsl(var(--background))
-    );
-    background-size: 400% 400%;
-    animation: gradientBG 25s ease infinite;
-    min-height: 100vh; /* Ensure body covers full viewport height */
+    @apply bg-background text-foreground;
+    min-height: 100vh;
   }
 }
 
-@keyframes gradientBG {
+.animated-particle-bg {
+  background-color: hsl(var(--background));
+  background-image: 
+    radial-gradient(circle at 25% 30%, hsl(var(--primary) / 0.1) 0%, transparent 40%),
+    radial-gradient(circle at 75% 80%, hsl(var(--accent) / 0.1) 0%, transparent 40%),
+    radial-gradient(circle at 10% 90%, hsl(var(--secondary) / 0.05) 0%, transparent 30%),
+    radial-gradient(circle at 80% 10%, hsl(var(--primary) / 0.08) 0%, transparent 30%);
+  background-size: 200% 200%;
+  animation: move-particles 30s linear infinite;
+}
+
+@keyframes move-particles {
   0% {
-    background-position: 0% 50%;
+    background-position: 0% 0%;
   }
   50% {
-    background-position: 100% 50%;
+    background-position: 100% 100%;
   }
   100% {
-    background-position: 0% 50%;
+    background-position: 0% 0%;
   }
 }

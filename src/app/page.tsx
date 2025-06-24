@@ -85,14 +85,15 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <header className="p-4 sm:p-6 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <AppLogo />
       </header>
       
       {/* Hero Section */}
-      <main className="flex-grow flex flex-col items-center justify-center text-center p-6 bg-gradient-to-br from-primary/10 via-background to-accent/10 bg-[length:200%_200%] animate-hero-gradient">
-        <div className="max-w-3xl">
+      <main className="relative flex-grow flex flex-col items-center justify-center text-center p-6 overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full animated-particle-bg z-0"></div>
+        <div className="relative z-10 max-w-3xl">
           <AppLogo iconSize={60} textSize="text-5xl sm:text-6xl" className="justify-center mb-6" />
           <h1 className="text-4xl sm:text-5xl font-extrabold text-foreground mb-6 leading-tight">
             The Exclusive Marketplace <br className="hidden sm:inline" />for <span className="text-primary">MLRIT</span> Students
