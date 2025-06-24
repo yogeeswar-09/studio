@@ -91,7 +91,7 @@ export default function LandingPage() {
       </header>
       
       {/* Hero Section */}
-      <main className="flex-grow flex flex-col items-center justify-center text-center p-6 bg-gradient-to-br from-primary/5 via-background to-accent/5">
+      <main className="flex-grow flex flex-col items-center justify-center text-center p-6 bg-gradient-to-br from-primary/10 via-background to-accent/10 bg-[length:200%_200%] animate-hero-gradient">
         <div className="max-w-3xl">
           <AppLogo iconSize={60} textSize="text-5xl sm:text-6xl" className="justify-center mb-6" />
           <h1 className="text-4xl sm:text-5xl font-extrabold text-foreground mb-6 leading-tight">
