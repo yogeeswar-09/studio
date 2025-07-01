@@ -26,8 +26,15 @@ const listingSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters.").max(100, "Title too long."),
   description: z.string().min(20, "Description must be at least 20 characters.").max(1000, "Description too long."),
   price: z.coerce.number({invalid_type_error: "Price must be a number."}).positive("Price must be a positive number.").min(0.01, "Price must be greater than 0."),
+  originalPrice: z.preprocess(
+    (val) => (val === "" || val === null ? undefined : val),
+    z.coerce.number({invalid_type_error: "Original price must be a number."}).positive("Original price must be positive.").optional()
+  ),
   category: z.enum(mockCategories as [string, ...string[]], { required_error: "Category is required." }),
   imageUrl: z.string().url("Image URL is required if not uploading a file.").optional().or(z.literal('')),
+}).refine(data => !data.originalPrice || data.originalPrice > data.price, {
+    message: "Original price must be greater than the selling price.",
+    path: ["originalPrice"],
 });
 
 type ListingFormValues = z.infer<typeof listingSchema>;
@@ -80,6 +87,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
       title: '',
       description: '',
       price: undefined, 
+      originalPrice: undefined,
       category: undefined,
       imageUrl: '',
     },
@@ -91,6 +99,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
         title: listing.title,
         description: listing.description,
         price: listing.price,
+        originalPrice: listing.originalPrice,
         category: listing.category,
         imageUrl: listing.imageUrl || '',
       });
@@ -101,6 +110,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
         title: '',
         description: '',
         price: undefined,
+        originalPrice: undefined,
         category: undefined,
         imageUrl: '',
       });
@@ -189,6 +199,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
         title: data.title,
         description: data.description,
         price: data.price,
+        originalPrice: data.originalPrice || undefined,
         category: data.category,
         imageUrl: finalImageUrl!,
         sellerId: user.uid,
@@ -279,7 +290,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                 name="price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Price (₹)</FormLabel>
+                    <FormLabel>Selling Price (₹)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" placeholder="e.g., 1500.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} disabled={isLoading || isUploadingImage} />
                     </FormControl>
@@ -290,27 +301,42 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
 
               <FormField
                 control={form.control}
-                name="category"
+                name="originalPrice"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={isLoading || isUploadingImage}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {mockCategories.map(cat => (
-                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Original Price (₹) <span className="text-muted-foreground text-xs">(Optional)</span></FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" placeholder="e.g., 2000.00" {...field} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : '')} disabled={isLoading || isUploadingImage} />
+                    </FormControl>
+                    <FormDescription>Shows a striked-out price to highlight a discount.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
+            
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={isLoading || isUploadingImage}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {mockCategories.map(cat => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
             <FormItem>
                 <FormLabel>Image</FormLabel>

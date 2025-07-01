@@ -37,8 +37,13 @@ export function ItemCard({ item }: ItemCardProps) {
             </CardTitle>
             <Badge variant="secondary" className="whitespace-nowrap shrink-0">{item.category}</Badge>
           </div>
-          <CardDescription className="text-xl font-bold text-primary mt-1">
-            ₹{item.price.toFixed(2)}
+          <CardDescription className="text-xl font-bold text-primary mt-1 flex items-baseline gap-2">
+            <span>₹{item.price.toFixed(2)}</span>
+            {item.originalPrice && item.originalPrice > item.price && (
+              <span className="text-sm font-normal text-muted-foreground line-through">
+                ₹{item.originalPrice.toFixed(2)}
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 pt-0 text-sm text-muted-foreground flex-grow">

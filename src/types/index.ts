@@ -28,6 +28,7 @@ export type Listing = {
   title: string;
   description: string;
   price: number;
+  originalPrice?: number;
   category: ListingCategory;
   imageUrl: string; // Cloudinary URL
   sellerId: string; // User uid
@@ -61,4 +62,5 @@ export type ChatConversation = {
   updatedAt: Timestamp | string; // Firestore Timestamp or ISO date string
   createdAt: Timestamp | string; // Firestore Timestamp or ISO date string
 };
+
 

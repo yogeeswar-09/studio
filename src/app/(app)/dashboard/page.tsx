@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -28,8 +29,13 @@ const ItemCardMini = ({ item }: { item: Listing }) => (
       </div>
       <CardHeader className="p-3">
         <CardTitle className="text-sm font-semibold leading-tight truncate group-hover:text-primary">{item.title}</CardTitle>
-        <CardDescription className="text-md text-primary font-bold mt-0.5">
-          ₹{item.price.toFixed(2)}
+        <CardDescription className="text-md text-primary font-bold mt-0.5 flex items-baseline gap-2">
+          <span>₹{item.price.toFixed(2)}</span>
+          {item.originalPrice && item.originalPrice > item.price && (
+            <span className="text-xs font-normal text-muted-foreground line-through">
+              ₹{item.originalPrice.toFixed(2)}
+            </span>
+          )}
         </CardDescription>
       </CardHeader>
     </Card>

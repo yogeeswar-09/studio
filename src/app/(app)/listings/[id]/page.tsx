@@ -245,6 +245,10 @@ export default function ListingDetailPage() {
   
   const timeAgo = listing.createdAt ? formatDistanceToNow(new Date(listing.createdAt as string), { addSuffix: true }) : 'unknown';
 
+  const discountPercentage = listing.originalPrice && listing.originalPrice > listing.price
+    ? Math.round(((listing.originalPrice - listing.price) / listing.originalPrice) * 100)
+    : 0;
+
   return (
     <div className="container mx-auto py-8 px-4">
       <Button variant="ghost" onClick={() => router.back()} className="mb-6 text-muted-foreground hover:text-foreground">
@@ -277,9 +281,21 @@ export default function ListingDetailPage() {
                 <CardTitle className="text-3xl font-bold text-foreground">{listing.title}</CardTitle>
                 <Badge variant="secondary" className="text-sm ml-2">{listing.category}</Badge>
               </div>
-              <CardDescription className="text-3xl font-extrabold text-primary mt-2">
-                ₹{listing.price.toFixed(2)}
-              </CardDescription>
+              <div className="flex items-baseline gap-3 mt-2">
+                  <p className="text-3xl font-extrabold text-primary">
+                      ₹{listing.price.toFixed(2)}
+                  </p>
+                  {listing.originalPrice && listing.originalPrice > listing.price && (
+                      <p className="text-xl font-normal text-muted-foreground line-through">
+                          ₹{listing.originalPrice.toFixed(2)}
+                      </p>
+                  )}
+                  {discountPercentage > 0 && (
+                      <Badge variant="destructive" className="bg-green-600 hover:bg-green-700 border-none text-white font-semibold">
+                          {discountPercentage}% OFF
+                      </Badge>
+                  )}
+              </div>
               <p className="text-xs text-muted-foreground mt-1">Listed {timeAgo}</p>
             </CardHeader>
             <CardContent>
