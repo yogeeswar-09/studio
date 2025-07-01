@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 // Simplified ItemCard for dashboard
 const ItemCardMini = ({ item }: { item: Listing }) => (
   <Link href={`/listings/${item.id}`} className="block group">
-    <Card className="overflow-hidden h-full flex flex-col transition-all duration-300 ease-in-out hover:shadow-xl hover:border-primary bg-card group-hover:animate-pulsing-glow-border">
+    <Card className="overflow-hidden h-full flex flex-col transition-all duration-300 ease-in-out hover:shadow-xl hover:border-primary bg-card group-hover:animate-pulsing-glow-border hover:-translate-y-2">
       <div className="aspect-video overflow-hidden relative bg-muted">
         <Image
           src={item.imageUrl}
