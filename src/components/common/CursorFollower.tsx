@@ -1,97 +1,143 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { cn } from '@/lib/utils';
+import { useEffect, useRef } from 'react';
+
+// The number of points in the trail, affecting its length.
+const TRAIL_LENGTH = 15;
+
+// Base size of the trail.
+const POINT_SIZE = 8;
 
 export function CursorFollower() {
-  const dotRef = useRef<HTMLDivElement>(null);
-  const circleRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const pointsRef = useRef(
+    Array.from({ length: TRAIL_LENGTH }, () => ({
+      x: 0,
+      y: 0,
+      dx: 0,
+      dy: 0,
+    }))
+  );
+  const mousePos = useRef({ x: -1000, y: -1000 }); // Start off-screen
+  const animationFrameId = useRef<number>();
+  const primaryColorRef = useRef('hsl(207, 68%, 53%)'); // Default primary color
 
-  const [isPointer, setIsPointer] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
-
-  // Using refs for animation to avoid re-renders on mouse move
-  const requestRef = useRef<number>();
-  const mousePos = useRef({ x: 0, y: 0 });
-  const circlePos = useRef({ x: 0, y: 0 });
-  let previousTime: number | undefined;
-
-  const animate = (time: number) => {
-    if (previousTime !== undefined) {
-      // Lerp (linear interpolation) for smooth following effect
-      // A smaller value (e.g., 0.1) results in a smoother/slower follow
-      circlePos.current.x += (mousePos.current.x - circlePos.current.x) * 0.12;
-      circlePos.current.y += (mousePos.current.y - circlePos.current.y) * 0.12;
-      
-      if (dotRef.current) {
-        dotRef.current.style.transform = `translate(${mousePos.current.x}px, ${mousePos.current.y}px)`;
-      }
-      if (circleRef.current) {
-        circleRef.current.style.transform = `translate(${circlePos.current.x}px, ${circlePos.current.y}px)`;
-      }
-    }
-    previousTime = time;
-    requestRef.current = requestAnimationFrame(animate);
-  };
-  
   useEffect(() => {
-    requestRef.current = requestAnimationFrame(animate);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    // Get the primary color from CSS variables to match the site's theme
+    try {
+        const colorValue = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+        if(colorValue) primaryColorRef.current = colorValue;
+    } catch (e) {
+        console.warn("Could not read --primary color for cursor effect, using default.");
+    }
+    
+    const primaryHsl = primaryColorRef.current.split(' ').map(parseFloat);
+    const primaryColor = `hsl(${primaryHsl[0]}, ${primaryHsl[1]}%, ${primaryHsl[2]}%)`;
+    const glowColor = `hsla(${primaryHsl[0]}, ${primaryHsl[1]}%, ${primaryHsl[2]}%, 0.5)`;
+
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resizeCanvas = () => {
+      // Use retina resolution for sharper drawing
+      canvas.width = window.innerWidth * 2; 
+      canvas.height = window.innerHeight * 2;
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
+      ctx.scale(2, 2);
+    };
 
     const handleMouseMove = (e: MouseEvent) => {
       mousePos.current = { x: e.clientX, y: e.clientY };
-      
-      const target = e.target as HTMLElement;
-      // Check if the target or its parent has a 'pointer' cursor style
-      if (window.getComputedStyle(target).getPropertyValue('cursor') === 'pointer' || 
-          (target.parentElement && window.getComputedStyle(target.parentElement).getPropertyValue('cursor') === 'pointer')) {
-        setIsPointer(true);
-      } else {
-        setIsPointer(false);
-      }
     };
 
-    const handleMouseEnter = () => setIsVisible(true);
-    const handleMouseLeave = () => setIsVisible(false);
+    const updatePoints = () => {
+      let x = mousePos.current.x;
+      let y = mousePos.current.y;
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.body.addEventListener('mouseenter', handleMouseEnter);
-    document.body.addEventListener('mouseleave', handleMouseLeave);
-    
-    return () => {
-      if (requestRef.current) {
-        cancelAnimationFrame(requestRef.current);
+      pointsRef.current.forEach((p) => {
+        const prevX = p.x;
+        const prevY = p.y;
+        
+        // Easing/spring effect for smooth trailing
+        p.dx = (x - p.x) * 0.25; 
+        p.dy = (y - p.y) * 0.25;
+
+        p.x += p.dx;
+        p.y += p.dy;
+
+        // The next point will trail the previous one
+        x = prevX;
+        y = prevY;
+      });
+    };
+
+    const draw = () => {
+      if (!ctx) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      let lastPoint = pointsRef.current[0];
+
+      // 1. Draw the outer glowing "blade"
+      ctx.beginPath();
+      ctx.moveTo(lastPoint.x, lastPoint.y);
+      ctx.strokeStyle = primaryColor;
+      ctx.lineWidth = POINT_SIZE;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.shadowColor = glowColor;
+      ctx.shadowBlur = 20;
+
+      for (let i = 1; i < TRAIL_LENGTH; i++) {
+        const point = pointsRef.current[i];
+        ctx.lineTo(point.x, point.y);
       }
+      ctx.stroke();
+
+      // 2. Draw the bright white "core" for the light saber effect
+      ctx.beginPath();
+      ctx.moveTo(lastPoint.x, lastPoint.y);
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = POINT_SIZE / 2.5; // Thinner core
+      ctx.shadowBlur = 0; // No glow for the core
+
+      for (let i = 1; i < TRAIL_LENGTH; i++) {
+        const point = pointsRef.current[i];
+        ctx.lineTo(point.x, point.y);
+      }
+      ctx.stroke();
+    };
+
+    const animate = () => {
+      updatePoints();
+      draw();
+      animationFrameId.current = requestAnimationFrame(animate);
+    };
+    
+    // Initial setup
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    document.addEventListener('mousemove', handleMouseMove);
+    animationFrameId.current = requestAnimationFrame(animate);
+
+    // Cleanup
+    return () => {
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+      }
+      window.removeEventListener('resize', resizeCanvas);
       document.removeEventListener('mousemove', handleMouseMove);
-      document.body.removeEventListener('mouseenter', handleMouseEnter);
-      document.body.removeEventListener('mouseleave', handleMouseLeave);
     };
   }, []);
 
   return (
-    <>
-      {/* The small dot that is directly at the cursor position */}
-      <div
-        ref={dotRef}
-        className={cn(
-          'hidden md:block',
-          'fixed top-0 left-0 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none z-[9999] transition-[width,height,background-color] duration-200',
-          'bg-primary',
-          { 'opacity-0': !isVisible, 'opacity-100': isVisible },
-          { 'w-2 h-2': !isPointer, 'w-8 h-8 bg-primary/30': isPointer } // Changes size and opacity on hover
-        )}
-      />
-      {/* The larger, blurred circle that lags behind */}
-      <div
-        ref={circleRef}
-        className={cn(
-          'hidden md:block',
-          'fixed top-0 left-0 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none z-[9999]',
-          'border-2 border-primary/50',
-          'transition-[width,height,opacity] duration-300 ease-out',
-          { 'opacity-0': !isVisible, 'opacity-100': isVisible },
-          { 'w-10 h-10': !isPointer, 'w-0 h-0 opacity-0': isPointer } // Circle disappears on hover
-        )}
-      />
-    </>
+    <canvas
+      ref={canvasRef}
+      className="hidden md:block fixed top-0 left-0 w-full h-full pointer-events-none z-[9999]"
+    />
   );
 }
