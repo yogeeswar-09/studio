@@ -6,7 +6,7 @@ import type { Listing } from '@/types';
 import { useAuth } from '@/hooks/use-auth';
 import { ItemCard } from '@/components/browse/ItemCard';
 import { Button } from '@/components/ui/button';
-import { Edit3, PlusCircle, Trash2, Frown, Loader2, ShoppingBag } from 'lucide-react'; // Added ShoppingBag for sold
+import { Edit3, PlusCircle, Trash2, Frown, Loader2, ShoppingBag, Undo2 } from 'lucide-react'; // Added Undo2
 import Link from 'next/link';
 import {
   AlertDialog,
@@ -73,23 +73,26 @@ export function UserListings() {
     }
   };
 
-  const handleMarkAsSold = async (listingId: string) => {
+  const handleStatusToggle = async (listing: Listing) => {
+    const newStatus = listing.status === 'sold' ? 'available' : 'sold';
+    const listingId = listing.id;
+
     setIsUpdatingStatus(listingId);
     try {
       const listingRef = doc(db, "listings", listingId);
       await updateDoc(listingRef, {
-        status: 'sold',
+        status: newStatus,
         updatedAt: serverTimestamp()
       });
       setUserListings(prevListings =>
         prevListings.map(item =>
-          item.id === listingId ? { ...item, status: 'sold', updatedAt: new Date().toISOString() } : item
+          item.id === listingId ? { ...item, status: newStatus, updatedAt: new Date().toISOString() } : item
         )
       );
-      toast({ title: "Success", description: "Listing marked as sold." });
+      toast({ title: "Success", description: `Listing marked as ${newStatus}.` });
     } catch (error: any) {
-      console.error("Error marking as sold:", error);
-      toast({ title: "Update Failed", description: error.message || "Could not mark listing as sold.", variant: "destructive" });
+      console.error(`Error marking as ${newStatus}:`, error);
+      toast({ title: "Update Failed", description: error.message || `Could not mark listing as ${newStatus}.`, variant: "destructive" });
     } finally {
       setIsUpdatingStatus(null);
     }
@@ -140,22 +143,25 @@ export function UserListings() {
             <div key={item.id} className="relative group">
               <ItemCard item={item} />
               <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
-                {item.status === 'available' && (
-                  <Button
+                <Button
                     variant="outline"
                     size="sm"
-                    className="bg-background/90 hover:bg-green-500/20 shadow-md text-xs px-2 py-1 h-auto"
-                    onClick={() => handleMarkAsSold(item.id)}
+                    className={`bg-background/90 shadow-md text-xs px-2 py-1 h-auto w-full ${
+                        item.status === 'sold'
+                        ? 'hover:bg-primary/10 hover:text-primary'
+                        : 'hover:bg-green-500/20 hover:text-green-700'
+                    }`}
+                    onClick={() => handleStatusToggle(item)}
                     disabled={isUpdatingStatus === item.id}
-                  >
+                >
                     {isUpdatingStatus === item.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : item.status === 'sold' ? (
+                        <><Undo2 className="h-3 w-3 mr-1" /> Mark Available</>
                     ) : (
-                      <ShoppingBag className="h-3 w-3 mr-1" /> 
+                        <><ShoppingBag className="h-3 w-3 mr-1" /> Mark Sold</>
                     )}
-                    Mark Sold
-                  </Button>
-                )}
+                </Button>
                 <Link href={`/profile?editListing=${item.id}`}>
                   <Button variant="outline" size="sm" className="bg-background/90 hover:bg-background shadow-md text-xs px-2 py-1 h-auto w-full">
                     <Edit3 className="h-3 w-3 mr-1" /> Edit
