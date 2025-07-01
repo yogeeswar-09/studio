@@ -6,7 +6,7 @@ import { useEffect, useRef } from 'react';
 const TRAIL_LENGTH = 10;
 
 // Base size of the trail.
-const POINT_SIZE = 8;
+const POINT_SIZE = 4;
 
 export function CursorFollower() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
