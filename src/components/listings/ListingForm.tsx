@@ -292,7 +292,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                   <FormItem>
                     <FormLabel>Selling Price (₹)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="e.g., 1500.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} disabled={isLoading || isUploadingImage} />
+                      <Input type="number" step="0.01" placeholder="e.g., 1500.00" {...field} value={field.value ?? ''} disabled={isLoading || isUploadingImage} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -306,7 +306,7 @@ export function ListingForm({ listing, onSubmitSuccess }: ListingFormProps) {
                   <FormItem>
                     <FormLabel>Original Price (₹) <span className="text-muted-foreground text-xs">(Optional)</span></FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="e.g., 2000.00" {...field} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : '')} disabled={isLoading || isUploadingImage} />
+                      <Input type="number" step="0.01" placeholder="e.g., 2000.00" {...field} value={field.value ?? ''} disabled={isLoading || isUploadingImage} />
                     </FormControl>
                     <FormDescription>Shows a striked-out price to highlight a discount.</FormDescription>
                     <FormMessage />
