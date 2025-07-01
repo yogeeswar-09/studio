@@ -134,7 +134,7 @@ function ListingsPageContent() {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <div className="mb-8 p-4 bg-card rounded-lg shadow-md">
+      <div className="mb-8 p-4 bg-card rounded-lg shadow-md animate-pulsing-glow-border">
         <h1 className="text-3xl font-bold text-foreground flex items-center">
           <ListFilter className="mr-3 h-7 w-7 text-primary" />
           {currentCategory ? `Category: ${currentCategory}` : 'All Available Items'}
@@ -205,5 +205,3 @@ export default function ListingsPage() {
     </Suspense>
   );
 }
-
-    
