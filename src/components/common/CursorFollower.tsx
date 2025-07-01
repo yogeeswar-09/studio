@@ -64,8 +64,8 @@ export function CursorFollower() {
         const prevY = p.y;
         
         // Easing/spring effect for smooth trailing
-        p.dx = (x - p.x) * 0.55; 
-        p.dy = (y - p.y) * 0.55;
+        p.dx = (x - p.x) * 0.85; 
+        p.dy = (y - p.y) * 0.85;
 
         p.x += p.dx;
         p.y += p.dy;
