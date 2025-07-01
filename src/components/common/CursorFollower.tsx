@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 
 // The number of points in the trail, affecting its length.
-const TRAIL_LENGTH = 15;
+const TRAIL_LENGTH = 10;
 
 // Base size of the trail.
 const POINT_SIZE = 8;
@@ -64,8 +64,8 @@ export function CursorFollower() {
         const prevY = p.y;
         
         // Easing/spring effect for smooth trailing
-        p.dx = (x - p.x) * 0.25; 
-        p.dy = (y - p.y) * 0.25;
+        p.dx = (x - p.x) * 0.55; 
+        p.dy = (y - p.y) * 0.55;
 
         p.x += p.dx;
         p.y += p.dy;
