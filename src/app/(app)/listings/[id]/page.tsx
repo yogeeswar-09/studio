@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -8,14 +9,26 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, MessageCircle, Edit3, Loader2, AlertTriangle, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Edit3, Loader2, AlertTriangle, ShoppingBag, HandCoins } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
-import { doc, getDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, Timestamp, collection, query, where, getDocs, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function ListingDetailPage() {
   const params = useParams();
@@ -24,6 +37,9 @@ export default function ListingDetailPage() {
   const [listing, setListing] = useState<Listing | null>(null);
   const [seller, setSeller] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOfferDialogOpen, setIsOfferDialogOpen] = useState(false);
+  const [offerPrice, setOfferPrice] = useState('');
+  const [isSendingOffer, setIsSendingOffer] = useState(false);
   const { toast } = useToast();
 
   const id = params.id as string;
@@ -90,6 +106,88 @@ export default function ListingDetailPage() {
 
     fetchListingAndSeller();
   }, [id, toast]);
+
+  const handleSendOffer = async () => {
+    if (!currentUser || !seller || !listing) {
+        toast({ title: "Error", description: "Cannot send offer. Missing user or listing details.", variant: "destructive" });
+        return;
+    }
+    if (!offerPrice || isNaN(parseFloat(offerPrice)) || parseFloat(offerPrice) <= 0) {
+        toast({ title: "Invalid Offer", description: "Please enter a valid, positive offer price.", variant: "destructive" });
+        return;
+    }
+
+    setIsSendingOffer(true);
+    const offerMessage = `Hi! I would like to make an offer of ₹${parseFloat(offerPrice).toFixed(2)} for your item: "${listing.title}".`;
+    const sortedUids = [currentUser.uid, seller.uid].sort();
+
+    try {
+        // 1. Find or create conversation
+        const conversationsRef = collection(db, "conversations");
+        const q = query(
+            conversationsRef,
+            where("participantUids", "==", sortedUids),
+            where("listingId", "==", listing.id)
+        );
+        const querySnapshot = await getDocs(q);
+
+        let conversationId: string;
+        let conversationDocRef;
+
+        if (!querySnapshot.empty) {
+            conversationId = querySnapshot.docs[0].id;
+            conversationDocRef = querySnapshot.docs[0].ref;
+        } else {
+            const newConvoData = {
+                participantUids: sortedUids,
+                listingId: listing.id,
+                lastMessage: null,
+                unreadCount: { [currentUser.uid]: 0, [seller.uid]: 0 },
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            };
+            const newDocRef = await addDoc(conversationsRef, newConvoData);
+            conversationId = newDocRef.id;
+            conversationDocRef = newDocRef;
+        }
+
+        // 2. Send message and update conversation
+        const messagesColRef = collection(db, "conversations", conversationId, "messages");
+        const convoSnap = await getDoc(conversationDocRef);
+        const currentUnreadCount = convoSnap.data()?.unreadCount?.[seller.uid] || 0;
+
+        await addDoc(messagesColRef, {
+            senderId: currentUser.uid,
+            receiverId: seller.uid,
+            text: offerMessage,
+            timestamp: serverTimestamp(),
+            isRead: false,
+        });
+
+        await updateDoc(conversationDocRef, {
+            lastMessage: {
+                text: offerMessage,
+                senderId: currentUser.uid,
+                timestamp: serverTimestamp(),
+            },
+            updatedAt: serverTimestamp(),
+            [`unreadCount.${seller.uid}`]: currentUnreadCount + 1,
+            [`unreadCount.${currentUser.uid}`]: 0,
+        });
+        
+        toast({ title: "Offer Sent!", description: "Your offer has been sent to the seller." });
+        setIsOfferDialogOpen(false);
+        setOfferPrice('');
+        router.push(`/chat?chatId=${conversationId}`);
+
+    } catch (error: any) {
+        console.error("Error sending offer:", error);
+        toast({ title: "Failed to Send Offer", description: error.message || "An unknown error occurred.", variant: "destructive" });
+    } finally {
+        setIsSendingOffer(false);
+    }
+  };
+
 
   if (isLoading) {
     return (
@@ -232,10 +330,49 @@ export default function ListingDetailPage() {
                 ) : listing.status !== 'sold' ? (
                   <>
                     <Link href={`/chat?newChatWith=${listing.sellerId}&itemId=${listing.id}`} passHref legacyBehavior>
-                      <Button size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-base" disabled={listing.status === 'sold' || !listing.sellerId}>
+                      <Button size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-base" disabled={!listing.sellerId}>
                         <MessageCircle className="mr-2 h-5 w-5" /> Chat with Seller
                       </Button>
                     </Link>
+                    <Dialog open={isOfferDialogOpen} onOpenChange={setIsOfferDialogOpen}>
+                      <DialogTrigger asChild>
+                          <Button size="lg" variant="outline" className="w-full text-base" disabled={!listing.sellerId}>
+                              <HandCoins className="mr-2 h-5 w-5" /> Make an Offer
+                          </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                          <DialogTitle>Make an Offer for "{listing.title}"</DialogTitle>
+                          <DialogDescription>
+                            Your offer will be sent directly to the seller as a chat message. The seller's asking price is ₹{listing.price.toFixed(2)}.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="offer-price" className="text-right">
+                              Offer (₹)
+                            </Label>
+                            <Input
+                              id="offer-price"
+                              type="number"
+                              value={offerPrice}
+                              onChange={(e) => setOfferPrice(e.target.value)}
+                              className="col-span-3"
+                              placeholder="e.g., 999.00"
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <DialogClose asChild>
+                            <Button type="button" variant="secondary">Cancel</Button>
+                          </DialogClose>
+                          <Button onClick={handleSendOffer} disabled={isSendingOffer || !offerPrice}>
+                            {isSendingOffer && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Send Offer
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   </>
                 ) : (
                    <p className="text-center text-muted-foreground font-semibold p-3 bg-muted rounded-md">
