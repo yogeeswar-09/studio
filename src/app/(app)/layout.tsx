@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Settings, LogOut } from "lucide-react";
 import { CampusKartIcon } from "@/components/common/CampusKartIcon"; // Import new icon
+import { CursorFollower } from "@/components/common/CursorFollower"; // Import new component
 import Link from "next/link";
 import React from "react";
 
@@ -47,6 +48,7 @@ export default function AppLayout({
 
   return (
     <AuthGuard>
+      <CursorFollower />
       <SidebarProvider defaultOpen={false}> {/* Changed defaultOpen to false */}
         <Sidebar collapsible="icon" variant="sidebar" side="left" className="border-r">
           <SidebarHeader className="p-4">
