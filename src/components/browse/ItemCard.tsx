@@ -1,3 +1,4 @@
+
 import type { Listing } from '@/types';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -12,7 +13,7 @@ interface ItemCardProps {
 
 export function ItemCard({ item }: ItemCardProps) {
   return (
-    <Card className="overflow-hidden h-full flex flex-col group transition-all duration-300 ease-in-out hover:shadow-xl hover:border-primary">
+    <Card className="overflow-hidden h-full flex flex-col group transition-all duration-300 ease-in-out hover:shadow-xl hover:border-primary hover:-translate-y-2">
       <Link href={`/listings/${item.id}`} className="block flex-grow flex flex-col">
         <div className="relative w-full aspect-[4/3] overflow-hidden bg-muted">
           <Image
