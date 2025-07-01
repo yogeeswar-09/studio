@@ -198,48 +198,50 @@ function ProfilePageContent() {
   return (
     <div className="container mx-auto py-8">
       {user && (
-        <Card className="mb-10 shadow-lg overflow-hidden">
-          <CardHeader className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6 p-6 bg-gradient-to-r from-primary/10 via-card to-accent/5">
-            <Avatar className="h-20 w-20 text-2xl border-2 border-primary shadow-md">
-              <AvatarImage src={user.avatarUrl} alt={user.name || "User Avatar"} />
-              <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-            </Avatar>
-            <div className="text-center sm:text-left">
-              <CardTitle className="text-3xl font-bold text-foreground">{user.name}</CardTitle>
-              <CardDescription className="text-md text-muted-foreground mt-1">{user.email}</CardDescription>
-              <CardDescription className="text-sm text-muted-foreground mt-0.5">{user.year} - {user.branch}</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-border divide-x divide-border">
-            {isLoadingStats ? (
-              [...Array(3)].map((_, i) => (
-                <div key={i} className="p-4 sm:p-6 text-center bg-card">
-                  <Skeleton className="h-8 w-8 mx-auto mb-2 bg-muted/70" />
-                  <Skeleton className="h-6 w-12 mx-auto mb-1 bg-muted/70" />
-                  <Skeleton className="h-4 w-24 mx-auto bg-muted/70" />
-                </div>
-              ))
-            ) : (
-              <>
-                <div className="p-4 sm:p-6 text-center bg-card">
-                  <Package className="h-8 w-8 text-primary mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-foreground">{userStats.total}</p>
-                  <p className="text-sm text-muted-foreground">Total Listings</p>
-                </div>
-                <div className="p-4 sm:p-6 text-center bg-card">
-                  <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-foreground">{userStats.available}</p>
-                  <p className="text-sm text-muted-foreground">Available</p>
-                </div>
-                <div className="p-4 sm:p-6 text-center bg-card">
-                  <ShoppingBag className="h-8 w-8 text-red-500 mx-auto mb-2" /> {/* Using red for sold items */}
-                  <p className="text-2xl font-bold text-foreground">{userStats.sold}</p>
-                  <p className="text-sm text-muted-foreground">Sold</p>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <div className="mb-10 animate-pulsing-glow-border rounded-lg">
+          <Card className="overflow-hidden">
+            <CardHeader className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6 p-6 bg-gradient-to-r from-primary/10 via-card to-accent/5">
+              <Avatar className="h-20 w-20 text-2xl border-2 border-primary shadow-md">
+                <AvatarImage src={user.avatarUrl} alt={user.name || "User Avatar"} />
+                <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+              </Avatar>
+              <div className="text-center sm:text-left">
+                <CardTitle className="text-3xl font-bold text-foreground">{user.name}</CardTitle>
+                <CardDescription className="text-md text-muted-foreground mt-1">{user.email}</CardDescription>
+                <CardDescription className="text-sm text-muted-foreground mt-0.5">{user.year} - {user.branch}</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-border divide-x divide-border">
+              {isLoadingStats ? (
+                [...Array(3)].map((_, i) => (
+                  <div key={i} className="p-4 sm:p-6 text-center bg-card">
+                    <Skeleton className="h-8 w-8 mx-auto mb-2 bg-muted/70" />
+                    <Skeleton className="h-6 w-12 mx-auto mb-1 bg-muted/70" />
+                    <Skeleton className="h-4 w-24 mx-auto bg-muted/70" />
+                  </div>
+                ))
+              ) : (
+                <>
+                  <div className="p-4 sm:p-6 text-center bg-card">
+                    <Package className="h-8 w-8 text-primary mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-foreground">{userStats.total}</p>
+                    <p className="text-sm text-muted-foreground">Total Listings</p>
+                  </div>
+                  <div className="p-4 sm:p-6 text-center bg-card">
+                    <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-foreground">{userStats.available}</p>
+                    <p className="text-sm text-muted-foreground">Available</p>
+                  </div>
+                  <div className="p-4 sm:p-6 text-center bg-card">
+                    <ShoppingBag className="h-8 w-8 text-red-500 mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-foreground">{userStats.sold}</p>
+                    <p className="text-sm text-muted-foreground">Sold</p>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       <Tabs defaultValue={defaultTab} className="w-full" onValueChange={(value) => {

@@ -181,32 +181,34 @@ export default function LandingPage() {
       {/* Contact Us Section */}
       <section id="contact" className="py-20 sm:py-28 bg-background">
         <div className="container mx-auto px-4">
-          <Card className="max-w-2xl mx-auto shadow-xl border-0 overflow-hidden bg-gradient-to-br from-primary/80 to-accent/80 text-primary-foreground">
-            <div className="p-8 sm:p-12">
-              <div className="text-center">
-                <Mail className="mx-auto h-12 w-12 mb-4" />
-                <CardTitle className="text-3xl font-bold">Get in Touch</CardTitle>
-                <CardDescription className="text-lg text-primary-foreground/90 pt-1">
-                  We'd love to hear from you!
-                </CardDescription>
+          <div className="max-w-2xl mx-auto animate-pulsing-glow-border rounded-lg">
+            <Card className="border-0 overflow-hidden bg-gradient-to-br from-primary/80 to-accent/80 text-primary-foreground">
+              <div className="p-8 sm:p-12">
+                <div className="text-center">
+                  <Mail className="mx-auto h-12 w-12 mb-4" />
+                  <CardTitle className="text-3xl font-bold">Get in Touch</CardTitle>
+                  <CardDescription className="text-lg text-primary-foreground/90 pt-1">
+                    We'd love to hear from you!
+                  </CardDescription>
+                </div>
+                <div className="text-center space-y-4 mt-6">
+                  <p className="text-primary-foreground/90">
+                    Have questions, suggestions, or need help with something? Our team is here to assist.
+                  </p>
+                  <p className="text-lg">
+                    <span className="font-medium">Email us at:</span>
+                    <br />
+                    <a 
+                      href="mailto:Codecraftersmlr@gmail.com" 
+                      className="text-xl font-semibold hover:underline"
+                    >
+                      Codecraftersmlr@gmail.com
+                    </a>
+                  </p>
+                </div>
               </div>
-              <div className="text-center space-y-4 mt-6">
-                <p className="text-primary-foreground/90">
-                  Have questions, suggestions, or need help with something? Our team is here to assist.
-                </p>
-                <p className="text-lg">
-                  <span className="font-medium">Email us at:</span>
-                  <br />
-                  <a 
-                    href="mailto:Codecraftersmlr@gmail.com" 
-                    className="text-xl font-semibold hover:underline"
-                  >
-                    Codecraftersmlr@gmail.com
-                  </a>
-                </p>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          </div>
         </div>
       </section>
 
