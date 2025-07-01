@@ -1,4 +1,3 @@
-
 "use client"; // Add this directive
 
 import { Header } from "@/components/common/Header";

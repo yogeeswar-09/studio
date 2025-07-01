@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { ChatMessage, User } from '@/types';
@@ -72,5 +71,3 @@ export function ChatMessageItem({ message, sender, isCurrentUserSender }: ChatMe
     </div>
   );
 }
-
-    

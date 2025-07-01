@@ -15,7 +15,7 @@ import { FirebaseError } from 'firebase/app';
 import Link from 'next/link';
 
 const loginSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }).endsWith("@mlrit.ac.in", { message: "Must be an MLRIT email." }),
+  email: z.string().email({ message: "Invalid email address." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
 });
 

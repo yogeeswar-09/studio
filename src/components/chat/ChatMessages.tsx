@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { ChatMessage, ChatConversation, User } from '@/types';

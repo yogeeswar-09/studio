@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -31,83 +30,62 @@ export default function ListingDetailPage() {
 
   useEffect(() => {
     const fetchListingAndSeller = async () => {
-      if (!id || typeof id !== 'string' || id.trim() === '') {
-        console.warn("ListingDetailPage: Invalid or empty ID received in params:", id);
-        setIsLoading(false);
-        setListing(null);
-        return;
-      }
-
-      console.log("ListingDetailPage: Attempting to fetch listing with ID:", id);
+      if (!id) return;
       setIsLoading(true);
-      setListing(null);
-      setSeller(null);
-
-      let fetchedListingData: Listing | null = null;
 
       // Step 1: Fetch Listing
+      let fetchedListingData: Listing | null = null;
       try {
         const listingRef = doc(db, "listings", id);
         const listingSnap = await getDoc(listingRef);
 
         if (listingSnap.exists()) {
           const rawData = listingSnap.data();
-          console.log("ListingDetailPage: Listing document found for ID:", id, rawData);
           fetchedListingData = {
             id: listingSnap.id,
             ...rawData,
             createdAt: (rawData.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
-            updatedAt: (rawData.updatedAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
           } as Listing;
           setListing(fetchedListingData);
         } else {
-          console.warn("ListingDetailPage: No such listing document found for ID:", id);
+          console.warn("No such listing document!");
           setListing(null);
-          setIsLoading(false); // Stop loading if listing not found
+          setIsLoading(false);
           return; // Exit early
         }
       } catch (error: any) {
-        console.error(`ListingDetailPage: Error fetching MAIN LISTING (ID: ${id}) details:`, error);
-        setListing(null);
+        console.error("Error fetching MAIN LISTING (ID: " + id + ") details:", error);
         toast({
           title: "Error Loading Item",
-          description: `Could not load item details: ${error.message || 'Please try again.'}`,
+          description: `Could not load item details. ${error.message}`,
           variant: "destructive",
         });
+        setListing(null);
         setIsLoading(false);
         return; // Exit if listing fetch fails
       }
 
-      // Step 2: Fetch Seller, only if listing was fetched successfully
-      if (fetchedListingData && fetchedListingData.sellerId) {
+      // Step 2: Fetch Seller
+      if (fetchedListingData?.sellerId) {
         try {
-          console.log("ListingDetailPage: Attempting to fetch seller with ID:", fetchedListingData.sellerId);
           const sellerRef = doc(db, "users", fetchedListingData.sellerId);
           const sellerSnap = await getDoc(sellerRef);
           if (sellerSnap.exists()) {
             setSeller({ uid: sellerSnap.id, ...sellerSnap.data() } as User);
-            console.log("ListingDetailPage: Seller details found for ID:", fetchedListingData.sellerId);
           } else {
-            console.warn("ListingDetailPage: Seller document not found for ID:", fetchedListingData.sellerId);
-            setSeller(null);
+             setSeller(null);
           }
-        } catch (error: any) {
-          console.error(`ListingDetailPage: Error fetching SELLER (ID: ${fetchedListingData.sellerId}) details:`, error);
-          setSeller(null);
+        } catch (error:any) {
+          console.error("Error fetching SELLER (ID: " + fetchedListingData.sellerId + ") details:", error);
           toast({
             title: "Error Loading Seller Info",
-            description: `Could not load seller details: ${error.message || 'Please try again.'}`,
+            description: `Could not load seller details. ${error.message}`,
             variant: "destructive",
           });
-          // The listing might still be displayable even if seller info fails, so don't return.
+          setSeller(null);
         }
-      } else if (fetchedListingData && !fetchedListingData.sellerId) {
-         console.warn("ListingDetailPage: Listing was fetched but has no sellerId property.");
-         setSeller(null);
       }
-
       setIsLoading(false);
-      console.log("ListingDetailPage: All fetch attempts finished for listing ID:", id, "isLoading is now", false);
     };
 
     fetchListingAndSeller();
@@ -154,8 +132,8 @@ export default function ListingDetailPage() {
       <div className="container mx-auto py-8 text-center">
         <AlertTriangle className="mx-auto h-16 w-16 text-destructive mb-4" />
         <h3 className="text-xl font-semibold text-foreground mb-2">Listing not found</h3>
-        <p className="text-muted-foreground">This item may have been removed, the link is incorrect, or it could not be loaded.</p>
-        <Button onClick={() => router.push('/listings')} className="mt-6">Browse Other Items</Button>
+        <p className="text-muted-foreground">This item may have been removed or the link is incorrect.</p>
+        <Button onClick={() => router.push('/browse')} className="mt-6">Browse Other Items</Button>
       </div>
     );
   }
@@ -167,7 +145,7 @@ export default function ListingDetailPage() {
     return names[0][0].toUpperCase() + names[names.length - 1][0].toUpperCase();
   };
   
-  const timeAgo = listing.createdAt ? formatDistanceToNow(new Date(listing.createdAt), { addSuffix: true }) : 'unknown';
+  const timeAgo = listing.createdAt ? formatDistanceToNow(new Date(listing.createdAt as string), { addSuffix: true }) : 'unknown';
 
   return (
     <div className="container mx-auto py-8 px-4">
