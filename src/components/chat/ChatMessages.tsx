@@ -32,11 +32,11 @@ export function ChatMessages({ conversation, messages, currentUser, isLoading, o
     return names[0][0].toUpperCase() + names[names.length - 1][0].toUpperCase();
   };
 
-  if (!currentUser) return <div className="flex flex-col h-full items-center justify-center bg-muted/30 p-4 text-center"><AlertCircle className="h-10 w-10 text-destructive mb-2" /><p className="text-lg text-muted-foreground">Authentication error. Please re-login.</p></div>;
+  if (!currentUser) return <div className="flex flex-1 flex-col min-h-0 items-center justify-center bg-muted/30 p-4 text-center"><AlertCircle className="h-10 w-10 text-destructive mb-2" /><p className="text-lg text-muted-foreground">Authentication error. Please re-login.</p></div>;
 
   if (!conversation && !isLoading) {
     return (
-      <div className="flex flex-col h-full items-center justify-center bg-muted/30 p-4 text-center">
+      <div className="flex flex-1 flex-col min-h-0 items-center justify-center bg-muted/30 p-4 text-center">
         <p className="text-lg text-muted-foreground">Select a chat to start messaging</p>
         <p className="text-sm text-muted-foreground mt-2">Or find an item you're interested in and click "Chat with Seller".</p>
       </div>
