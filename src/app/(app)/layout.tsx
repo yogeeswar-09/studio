@@ -119,15 +119,13 @@ export default function AppLayout({
 
   return (
     <AuthGuard>
-      {/* CursorFollower is now managed by AuthGuard to prevent it showing on splash */}
       <SidebarProvider defaultOpen={false}>
         <Sidebar collapsible="icon" variant="sidebar" side="left" className="border-r">
           <SidebarHeader className="p-4">
-            {/* Logo visible when sidebar expanded, icon-only could show smaller version or just icon */}
             <div className="flex items-center justify-between">
                <AppLogo className="group-data-[collapsible=icon]:hidden" />
-               <div className="hidden group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full"> {/* Added 'hidden' here */}
-                 <CampusKartIconLogoShort /> {/* Updated to use new short logo */}
+               <div className="hidden group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full">
+                 <CampusKartIconLogoShort />
                </div>
                <SidebarTrigger className="hidden group-data-[collapsible=icon]:hidden md:flex" />
             </div>
@@ -138,21 +136,19 @@ export default function AppLayout({
             </ScrollArea>
           </SidebarContent>
           <SidebarFooter className="p-2">
-            {/* Example footer items */}
             <Link href="/profile?tab=settings" passHref legacyBehavior>
                <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
                 <Settings className="h-5 w-5 shrink-0" />
                 <span className="ml-2 group-data-[collapsible=icon]:hidden">Settings</span>
               </Button>
             </Link>
-            {/* Logout button can be here or in Header user dropdown */}
           </SidebarFooter>
         </Sidebar>
 
-        <SidebarInset className="flex h-screen flex-col">
+        <SidebarInset className="grid grid-rows-[auto_1fr] flex-1 min-w-0">
           <Header />
           <main className={cn(
-            "relative flex-1",
+            "relative min-h-0", // min-h-0 is crucial for grid/flex children to scroll
             isChatPage 
               ? "overflow-hidden" 
               : "overflow-y-auto p-4 sm:p-6 lg:p-8 animated-particle-bg"
@@ -166,8 +162,8 @@ export default function AppLayout({
 }
 
 // A smaller logo for collapsed sidebar
-const CampusKartIconLogoShort = () => ( // Renamed and updated
+const CampusKartIconLogoShort = () => (
   <Link href="/" className="flex items-center justify-center">
-    <CampusKartIcon className="h-6 w-6 text-primary" /> {/* Used CampusKartIcon */}
+    <CampusKartIcon className="h-6 w-6 text-primary" />
   </Link>
 );
