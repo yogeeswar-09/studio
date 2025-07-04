@@ -18,7 +18,7 @@ body {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     
-    --card: 0 0% 100%;
+    --card: 0 0% 100% / 0.4;
     --card-foreground: 222.2 84% 4.9%;
 
     --popover: 0 0% 100%;
@@ -34,7 +34,7 @@ body {
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 210 40% 89.8%;
+    --border: 210 40% 89.8% / 0.5;
     --input: 210 40% 89.8%;
     --ring: 207 68% 53%;
     --radius: 0.5rem;
@@ -53,7 +53,7 @@ body {
     --background: 210 10% 15%; /* Dark Blue-Gray */
     --foreground: 0 0% 96%; /* Light Gray Text */
 
-    --card: 210 10% 20%;
+    --card: 210 10% 20% / 0.4;
     --card-foreground: 0 0% 96%;
 
     --popover: 210 10% 18%;
@@ -74,7 +74,7 @@ body {
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 96% / 0.2;
+    --border: 0 0% 96% / 0.3;
     --input: 210 10% 20%;
     --ring: 207 68% 53%; /* Primary color for rings */
     
@@ -99,67 +99,40 @@ body {
   }
 }
 
-@keyframes move-particles {
+@keyframes move-glows {
   from {
-    background-position: 
-      0 0,              /* Spark Layer 1 */
-      0 0,              /* Spark Layer 2 */
-      0% 0%,           /* Glow Layer 1 */
-      0% 0%,           /* Glow Layer 2 */
-      0% 0%,           /* Glow Layer 3 */
-      0% 0%;           /* Glow Layer 4 */
+    background-position: 0% 0%;
   }
   to {
-    background-position:
-      -1000px 1000px,   /* Spark Layer 1 moves diagonally */
-      -500px -500px,   /* Spark Layer 2 moves a different direction/speed */
-      200% 200%,        /* Glow layers loop */
-      200% 200%,
-      200% 200%,
-      200% 200%;
+    background-position: 200% 200%;
   }
 }
 
 .animated-particle-bg {
   background-color: hsl(var(--background));
   
-  /* Multiple background layers. Sparks are first (on top). */
+  /* Only glow layers for better performance */
   background-image: 
-    /* Sparks Layer 1 (small, faster) */
-    radial-gradient(circle 1px, hsl(var(--foreground) / 0.2) 1px, transparent 1px),
-    /* Sparks Layer 2 (slightly larger, slower) */
-    radial-gradient(circle 2px, hsl(var(--foreground) / 0.15) 2px, transparent 2px),
-
-    /* Original Glows for Light Theme */
-    radial-gradient(circle at 25% 30%, hsl(var(--primary) / 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 75% 80%, hsl(var(--accent) / 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 10% 90%, hsl(var(--primary) / 0.05) 0%, transparent 30%),
-    radial-gradient(circle at 80% 10%, hsl(var(--accent) / 0.05) 0%, transparent 30%);
+    radial-gradient(circle at 25% 30%, hsl(var(--primary) / 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 75% 80%, hsl(var(--accent) / 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 10% 90%, hsl(var(--primary) / 0.08) 0%, transparent 30%),
+    radial-gradient(circle at 80% 10%, hsl(var(--accent) / 0.08) 0%, transparent 30%);
   
-  /* Different sizes for each layer for parallax effect */
   background-size: 
-    150px 150px,   /* Spark 1 density (Increased from 75px) */
-    300px 300px,  /* Spark 2 density (Increased from 150px) */
-    200% 200%,    /* Glows */
+    200% 200%,
     200% 200%,
     200% 200%,
     200% 200%;
 
-  /* Single animation driving all layers at different speeds */
-  animation: move-particles 120s linear infinite; /* Slowed down from 90s */
+  /* Use a simpler, smoother animation */
+  animation: move-glows 40s linear infinite alternate;
 }
 
 .dark .animated-particle-bg {
-  /* Override only the glow layers for dark theme, sparks will inherit and use dark theme's --foreground color */
+  /* Glows for Dark Theme */
   background-image:
-    /* Sparks Layer 1 (re-declared for correct order) */
-    radial-gradient(circle 1px, hsl(var(--foreground) / 0.2) 1px, transparent 1px),
-    /* Sparks Layer 2 (re-declared for correct order) */
-    radial-gradient(circle 2px, hsl(var(--foreground) / 0.15) 2px, transparent 2px),
-
-    /* Glows for Dark Theme */
-    radial-gradient(circle at 25% 30%, hsl(var(--primary) / 0.1) 0%, transparent 40%),
-    radial-gradient(circle at 75% 80%, hsl(var(--accent) / 0.1) 0%, transparent 40%),
-    radial-gradient(circle at 10% 90%, hsl(var(--secondary) / 0.05) 0%, transparent 30%),
-    radial-gradient(circle at 80% 10%, hsl(var(--primary) / 0.08) 0%, transparent 30%);
+    radial-gradient(circle at 25% 30%, hsl(var(--primary) / 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 75% 80%, hsl(var(--accent) / 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 10% 90%, hsl(var(--secondary) / 0.08) 0%, transparent 30%),
+    radial-gradient(circle at 80% 10%, hsl(var(--primary) / 0.1) 0%, transparent 30%);
 }
