@@ -338,7 +338,7 @@ function ChatPageContent() {
   
   if (authLoading) {
     return (
-      <div className="flex h-[calc(100vh-var(--header-height,4rem))]">
+      <div className="flex h-full">
         <div className="w-1/4 border-r p-4 space-y-3 hidden md:block">
           <Skeleton className="h-10 w-full mb-4" />
           {[...Array(5)].map((_, i) => (
@@ -359,7 +359,7 @@ function ChatPageContent() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-var(--header-height,4rem))] overflow-hidden">
+    <div className="flex h-full overflow-hidden">
       <div className="w-full md:w-1/3 lg:w-1/4 border-r hidden md:flex md:flex-col">
         <ChatList
           conversations={conversations}
