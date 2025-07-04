@@ -96,35 +96,67 @@ body {
   }
 }
 
+@keyframes move-particles {
+  from {
+    background-position: 
+      0 0,              /* Spark Layer 1 */
+      0 0,              /* Spark Layer 2 */
+      0% 0%,           /* Glow Layer 1 */
+      0% 0%,           /* Glow Layer 2 */
+      0% 0%,           /* Glow Layer 3 */
+      0% 0%;           /* Glow Layer 4 */
+  }
+  to {
+    background-position:
+      -1000px 1000px,   /* Spark Layer 1 moves diagonally */
+      -500px -500px,   /* Spark Layer 2 moves a different direction/speed */
+      200% 200%,        /* Glow layers loop */
+      200% 200%,
+      200% 200%,
+      200% 200%;
+  }
+}
+
 .animated-particle-bg {
-  /* Light theme animated background */
   background-color: hsl(var(--background));
+  
+  /* Multiple background layers. Sparks are first (on top). */
   background-image: 
+    /* Sparks Layer 1 (small, faster) */
+    radial-gradient(circle 1px, hsl(var(--foreground) / 0.2) 1px, transparent 1px),
+    /* Sparks Layer 2 (slightly larger, slower) */
+    radial-gradient(circle 2px, hsl(var(--foreground) / 0.15) 2px, transparent 2px),
+
+    /* Original Glows for Light Theme */
     radial-gradient(circle at 25% 30%, hsl(var(--primary) / 0.08) 0%, transparent 40%),
     radial-gradient(circle at 75% 80%, hsl(var(--accent) / 0.08) 0%, transparent 40%),
     radial-gradient(circle at 10% 90%, hsl(var(--primary) / 0.05) 0%, transparent 30%),
     radial-gradient(circle at 80% 10%, hsl(var(--accent) / 0.05) 0%, transparent 30%);
-  background-size: 200% 200%;
-  animation: move-particles 60s linear infinite;
+  
+  /* Different sizes for each layer for parallax effect */
+  background-size: 
+    75px 75px,   /* Spark 1 density */
+    150px 150px,  /* Spark 2 density */
+    200% 200%,    /* Glows */
+    200% 200%,
+    200% 200%,
+    200% 200%;
+
+  /* Single animation driving all layers at different speeds */
+  animation: move-particles 90s linear infinite;
 }
 
 .dark .animated-particle-bg {
-  /* Dark theme animated background */
-  background-image: 
+  /* Override only the glow layers for dark theme, sparks will inherit and use dark theme's --foreground color */
+  background-image:
+    /* Sparks Layer 1 (re-declared for correct order) */
+    radial-gradient(circle 1px, hsl(var(--foreground) / 0.2) 1px, transparent 1px),
+    /* Sparks Layer 2 (re-declared for correct order) */
+    radial-gradient(circle 2px, hsl(var(--foreground) / 0.15) 2px, transparent 2px),
+
+    /* Glows for Dark Theme */
     radial-gradient(circle at 25% 30%, hsl(var(--primary) / 0.1) 0%, transparent 40%),
     radial-gradient(circle at 75% 80%, hsl(var(--accent) / 0.1) 0%, transparent 40%),
     radial-gradient(circle at 10% 90%, hsl(var(--secondary) / 0.05) 0%, transparent 30%),
     radial-gradient(circle at 80% 10%, hsl(var(--primary) / 0.08) 0%, transparent 30%);
-}
-
-@keyframes move-particles {
-  0% {
-    background-position: 0% 0%;
-  }
-  50% {
-    background-position: 100% 100%;
-  }
-  100% {
-    background-position: 0% 0%;
-  }
 }
