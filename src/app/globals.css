@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  .hover-gradient-glow:hover {
+    filter: drop-shadow(0 0 6px hsl(var(--primary) / 0.6)) drop-shadow(0 0 10px hsl(var(--accent) / 0.4));
+    -webkit-filter: drop-shadow(0 0 6px hsl(var(--primary) / 0.6)) drop-shadow(0 0 10px hsl(var(--accent) / 0.4));
+  }
+}
+
 body {
   font-family: var(--font-open-sans), Arial, Helvetica, sans-serif;
 }
@@ -11,8 +18,7 @@ body {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     
-    /* Improvisation: Card uses semi-transparent color for glass effect */
-    --card: 0 0% 100% / 0.4;
+    --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
 
     --popover: 0 0% 100%;
@@ -28,8 +34,7 @@ body {
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    /* Improvisation: Border uses semi-transparent color for glass effect */
-    --border: 210 40% 45.1% / 0.3;
+    --border: 210 40% 89.8%;
     --input: 210 40% 89.8%;
     --ring: 207 68% 53%;
     --radius: 0.5rem;
@@ -48,8 +53,7 @@ body {
     --background: 210 10% 15%; /* Dark Blue-Gray */
     --foreground: 0 0% 96%; /* Light Gray Text */
 
-    /* Improvisation: Card uses semi-transparent color for glass effect */
-    --card: 210 10% 20% / 0.4;
+    --card: 210 10% 20%;
     --card-foreground: 0 0% 96%;
 
     --popover: 210 10% 18%;
@@ -70,7 +74,6 @@ body {
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    /* Improvisation: Border uses semi-transparent color for glass effect */
     --border: 0 0% 96% / 0.2;
     --input: 210 10% 20%;
     --ring: 207 68% 53%; /* Primary color for rings */
