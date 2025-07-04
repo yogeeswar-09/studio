@@ -13,7 +13,7 @@ import { ArrowLeft, MessageCircle, Edit3, Loader2, AlertTriangle, ShoppingBag, H
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
-import { doc, getDoc, Timestamp, collection, query, where, getDocs, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, Timestamp, collection, query, where, getDocs, addDoc, serverTimestamp, updateDoc, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -123,12 +123,12 @@ export default function ListingDetailPage() {
     const sortedUids = [currentUser.uid, seller.uid].sort();
 
     try {
-        // 1. Find or create conversation
+        // 1. Find or create conversation based on participants only
         const conversationsRef = collection(db, "conversations");
         const q = query(
             conversationsRef,
             where("participantUids", "==", sortedUids),
-            where("listingId", "==", listing.id)
+            limit(1)
         );
         const querySnapshot = await getDocs(q);
 
@@ -139,9 +139,9 @@ export default function ListingDetailPage() {
             conversationId = querySnapshot.docs[0].id;
             conversationDocRef = querySnapshot.docs[0].ref;
         } else {
+            // Create a new generic conversation if one doesn't exist
             const newConvoData = {
                 participantUids: sortedUids,
-                listingId: listing.id,
                 lastMessage: null,
                 unreadCount: { [currentUser.uid]: 0, [seller.uid]: 0 },
                 createdAt: serverTimestamp(),

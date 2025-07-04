@@ -24,6 +24,7 @@ import {
   Timestamp,
   getDocs,
   writeBatch,
+  limit,
 } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
@@ -133,8 +134,7 @@ function ChatPageContent() {
 
     const findOrCreateChat = async () => {
         console.log(`ChatPage: Attempting to find or create chat with ${newChatWithUserId}`);
-        const itemId = searchParams.get('itemId');
-
+        
         if (newChatWithUserId === currentUser.uid) {
             toast({ title: "Cannot chat with yourself", variant: "destructive" });
             router.replace('/chat');
@@ -142,14 +142,9 @@ function ChatPageContent() {
         }
         
         const sortedUids = [currentUser.uid, newChatWithUserId].sort();
-        const constraints = [where("participantUids", "==", sortedUids)];
-        if (itemId) {
-            constraints.push(where("listingId", "==", itemId));
-        } else {
-            constraints.push(where("listingId", "==", null));
-        }
         
-        const q = query(collection(db, "conversations"), ...constraints);
+        // Find a conversation between these two users, regardless of the item.
+        const q = query(collection(db, "conversations"), where("participantUids", "==", sortedUids), limit(1));
         const querySnapshot = await getDocs(q);
         
         let conversationId: string | null = null;
@@ -161,9 +156,9 @@ function ChatPageContent() {
             const otherUser = await getCachedUserDetails(newChatWithUserId);
             if (otherUser) {
                 try {
+                    // Create a new generic conversation without a listingId.
                     const newConvoData = {
                         participantUids: sortedUids,
-                        listingId: itemId || null,
                         lastMessage: null,
                         unreadCount: { [currentUser.uid]: 0, [newChatWithUserId]: 0 },
                         createdAt: serverTimestamp(),
@@ -181,7 +176,7 @@ function ChatPageContent() {
             }
         }
 
-        // Navigate to the chat, removing the 'newChatWith' params
+        // Navigate to the chat, removing the 'newChatWith' and 'itemId' params
         const newParams = new URLSearchParams(searchParams.toString());
         newParams.delete('newChatWith');
         newParams.delete('itemId');
