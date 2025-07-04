@@ -19,35 +19,69 @@ import { Settings, LogOut, Loader2 } from "lucide-react";
 import { CampusKartIcon } from "@/components/common/CampusKartIcon"; // Import new icon
 import { CursorFollower } from "@/components/common/CursorFollower"; // Import new component
 import Link from "next/link";
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
 
 // This component will handle auth redirection logic client-side
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
-  // Redirect logic is now in AuthContext using useEffect with pathname
   
-  const SplashScreen = ({ message }: { message: string }) => (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background text-center p-6 overflow-hidden animated-particle-bg">
-      <div className="relative z-10 flex flex-col items-center">
-        <div className="mb-12 animate-logo-pulse animate-shining-glow">
-          <AppLogo iconSize={80} textSize="text-6xl" />
-        </div>
-        <div className="flex items-center text-xl text-muted-foreground animate-slide-up-fade-in" style={{ animationDelay: '0.3s' }}>
-          <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+  // This state will help us transition out of the initial load state.
+  const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) {
+      // Once loading is done, wait for the exit animation to finish before changing state
+      const timer = setTimeout(() => {
+        setIsInitialLoadComplete(true);
+      }, 1000); // This duration must match the animation in tailwind.config.ts
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading]);
+  
+  // A brand new splash screen component design
+  const SplashScreen = ({ message, isExiting }: { message: string, isExiting: boolean }) => (
+    <div 
+      className={cn(
+        "fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gray-900 text-center p-6 overflow-hidden",
+        // Apply the exit animation when `isExiting` is true
+        isExiting ? "animate-garage-door-up" : ""
+      )}
+    >
+      <div className="relative z-10 flex flex-col items-center animate-text-focus-in" style={{ animationDuration: '0.8s' }}>
+        <AppLogo iconSize={80} textSize="text-6xl" />
+        <p className="mt-8 text-2xl text-primary-foreground tracking-widest animate-neon-text-glow">
           {message}
-        </div>
+        </p>
       </div>
     </div>
   );
 
+  // This is the initial loading phase. It shows the full-screen splash.
+  // `!isInitialLoadComplete` ensures this block runs only during the very first load.
+  if (!isInitialLoadComplete) {
+    // `!isLoading` will be true when the exit animation should start.
+    return <SplashScreen message={!isLoading && !user ? "Redirecting..." : "Loading..."} isExiting={!isLoading} />;
+  }
+  
+  // After the first load, we use a much simpler loader for any subsequent auth checks.
+  // This avoids flashing the big splash screen on simple page navigations.
   if (isLoading) {
-    return <SplashScreen message="Loading..." />;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
   }
 
+  // And the original redirect logic is preserved.
   if (!user) {
-    // This case should ideally be handled by AuthContext redirect.
-    // If it reaches here, it might mean a brief moment before redirect or an issue.
-    return <SplashScreen message="Redirecting..." />;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="text-muted-foreground mt-4">Redirecting...</p>
+      </div>
+    );
   }
   
   return <>{children}</>;
