@@ -24,7 +24,7 @@ export default function AboutUsPage() {
                   CampusKart is an exclusive online marketplace designed for the students of MLRIT. Our platform facilitates the buying and selling of a wide range of items—from academic essentials like books, electronics, and lab equipment, to everyday student needs.
                 </p>
                 <p>
-                  We aim to foster a vibrant campus community by making it easy and safe for students to trade goods, find great deals, and declutter. By connecting students directly, CampusKart promotes sustainability and resourcefulness within our college.
+                  We aim to foster a vibrant campus community bymaking it easy and safe for students to trade goods, find great deals, and declutter. By connecting students directly, CampusKart promotes sustainability and resourcefulness within our college.
                 </p>
               </CardContent>
             </Card>
@@ -35,10 +35,7 @@ export default function AboutUsPage() {
                   <Users className="mr-3 h-6 w-6" /> Our Team - Code Crafters
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 text-foreground/90">
-                <p>
-                  CampusKart was brought to life by <strong className="text-primary">Team - Code Crafters</strong>, a passionate group of developers from the Department of Computer Science and Engineering (CSM - B) at MLRIT. Our mission is to build innovative solutions that enrich the student experience and foster a stronger campus community through technology.
-                </p>
+              <CardContent className="text-foreground/90">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
                     { name: "Vennala", role: "Developer (CSM)" },
@@ -55,9 +52,6 @@ export default function AboutUsPage() {
                     </div>
                   ))}
                 </div>
-                <p className="mt-4">
-                  This project is a testament to our collaborative spirit and commitment to our fellow students at MLRIT.
-                </p>
               </CardContent>
             </Card>
 
