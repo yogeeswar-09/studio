@@ -10,8 +10,11 @@ body {
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
+    
+    /* Improvisation: Card uses semi-transparent color for glass effect */
+    --card: 0 0% 100% / 0.4;
     --card-foreground: 222.2 84% 4.9%;
+
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
     --primary: 207 68% 53%;
@@ -24,7 +27,9 @@ body {
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 210 40% 89.8%;
+
+    /* Improvisation: Border uses semi-transparent color for glass effect */
+    --border: 210 40% 45.1% / 0.3;
     --input: 210 40% 89.8%;
     --ring: 207 68% 53%;
     --radius: 0.5rem;
@@ -43,7 +48,8 @@ body {
     --background: 210 10% 15%; /* Dark Blue-Gray */
     --foreground: 0 0% 96%; /* Light Gray Text */
 
-    --card: 210 10% 20%; /* Slightly lighter card */
+    /* Improvisation: Card uses semi-transparent color for glass effect */
+    --card: 210 10% 20% / 0.4;
     --card-foreground: 0 0% 96%;
 
     --popover: 210 10% 18%;
@@ -64,7 +70,8 @@ body {
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 210 10% 30%;
+    /* Improvisation: Border uses semi-transparent color for glass effect */
+    --border: 0 0% 96% / 0.2;
     --input: 210 10% 20%;
     --ring: 207 68% 53%; /* Primary color for rings */
     
