@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -251,7 +250,7 @@ export default function ListingDetailPage() {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <Button variant="ghost" onClick={() => router.back()} className="mb-6 text-muted-foreground hover:text-foreground">
+      <Button variant="ghost" onClick={() => window.history.back()} className="mb-6 text-muted-foreground hover:text-foreground">
         <ArrowLeft className="mr-2 h-4 w-4" /> Back
       </Button>
       <div className="grid md:grid-cols-5 gap-8 lg:gap-12">
