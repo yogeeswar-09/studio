@@ -37,7 +37,7 @@ export default function AboutUsPage() {
               </CardHeader>
               <CardContent className="space-y-4 text-foreground/90">
                 <p>
-                  CampusKart was proudly developed by <strong className="text-primary">Team - Code Crafters</strong> from the Department of Computer Science and Engineering (CSM - B) at MLRIT. We are a group of passionate student developers dedicated to enhancing campus life through technology.
+                  CampusKart was brought to life by <strong className="text-primary">Team - Code Crafters</strong>, a passionate group of developers from the Department of Computer Science and Engineering (CSM - B) at MLRIT. Our mission is to build innovative solutions that enrich the student experience and foster a stronger campus community through technology.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
