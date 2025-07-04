@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Settings, LogOut, Loader2 } from "lucide-react";
 import { CampusKartIcon } from "@/components/common/CampusKartIcon"; // Import new icon
 import { CursorFollower } from "@/components/common/CursorFollower"; // Import new component
+import { WaveLoader } from "@/components/common/WaveLoader"; // Import new component
 import Link from "next/link";
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -42,7 +43,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   }, [isLoading]);
   
   // A brand new splash screen component design
-  const SplashScreen = ({ message, isExiting }: { message: string, isExiting: boolean }) => (
+  const SplashScreen = ({ isExiting }: { isExiting: boolean }) => (
     <div 
       className={cn(
         "fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gray-900 text-center p-6 overflow-hidden",
@@ -58,9 +59,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
             CampusKart
           </span>
         </div>
-        <p className="mt-8 text-2xl text-primary-foreground tracking-widest">
-          {message}
-        </p>
+        <div className="mt-8">
+            <WaveLoader />
+        </div>
       </div>
     </div>
   );
@@ -71,7 +72,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     return (
         <>
             {/* Render the splash screen on top */}
-            <SplashScreen message={!isLoading && !user ? "Redirecting..." : "Loading..."} isExiting={!isLoading} />
+            <SplashScreen isExiting={!isLoading} />
             {/* Render the main layout underneath, it will be hidden by the splash screen initially */}
             {children}
         </>

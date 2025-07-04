@@ -3,12 +3,12 @@
 
 import { AppLogo } from "@/components/common/AppLogo";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { WaveLoader } from "@/components/common/WaveLoader";
 import { useAuth } from "@/hooks/use-auth";
 import { ArrowRight, ShieldCheck, ShoppingCart, MessageSquare, Mail, Star, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CampusKartIcon } from "@/components/common/CampusKartIcon";
@@ -16,7 +16,6 @@ import { CampusKartIcon } from "@/components/common/CampusKartIcon";
 export default function LandingPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
-  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -24,27 +23,6 @@ export default function LandingPage() {
     }
   }, [user, isLoading, router]);
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isLoading) {
-      setProgress(10);
-      let currentProgress = 10;
-      timer = setInterval(() => {
-        currentProgress += Math.floor(Math.random() * 10) + 5;
-        if (currentProgress >= 95) {
-          setProgress(95);
-          clearInterval(timer);
-        } else {
-          setProgress(currentProgress);
-        }
-      }, 200);
-    } else {
-      setProgress(100);
-    }
-    return () => {
-      clearInterval(timer);
-    };
-  }, [isLoading]);
 
   if (isLoading || user) { // Keep showing loading screen if user exists to avoid flash of content before redirect
     return (
@@ -57,7 +35,7 @@ export default function LandingPage() {
             </span>
           </div>
         </div>
-        <Progress value={progress} className="w-1/2 md:w-1/3 mx-auto h-2.5 bg-primary/30 [&>div]:bg-primary" />
+        <WaveLoader />
       </div>
     );
   }
