@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -193,15 +192,7 @@ export default function ListingDetailPage() {
   if (isLoading) {
     return (
       <div className="container mx-auto py-8 px-4">
-        <Link
-          href="/listings"
-          className={cn(
-            buttonVariants({ variant: 'outline' }),
-            'mb-6 inline-flex items-center'
-          )}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to All Listings
-        </Link>
+        <Skeleton className="h-10 w-44 mb-6" />
         <div className="grid md:grid-cols-5 gap-8 lg:gap-12">
           <div className="md:col-span-3">
             <Skeleton className="w-full aspect-video rounded-lg" />
@@ -238,12 +229,12 @@ export default function ListingDetailPage() {
         <AlertTriangle className="mx-auto h-16 w-16 text-destructive mb-4" />
         <h3 className="text-xl font-semibold text-foreground mb-2">Listing not found</h3>
         <p className="text-muted-foreground">This item may have been removed or the link is incorrect.</p>
-        <Link
-          href="/listings"
-          className={cn(buttonVariants(), 'mt-6')}
+        <Button
+          className="mt-6"
+          onClick={() => router.push('/listings')}
         >
           Back to All Listings
-        </Link>
+        </Button>
       </div>
     );
   }
@@ -263,15 +254,13 @@ export default function ListingDetailPage() {
 
   return (
     <div className="container mx-auto py-8 px-4">
-       <Link
-          href="/listings"
-          className={cn(
-            buttonVariants({ variant: 'outline' }),
-            'mb-6 inline-flex items-center'
-          )}
+       <Button
+          variant="outline"
+          className="mb-6 inline-flex items-center"
+          onClick={() => router.push('/listings')}
         >
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to All Listings
-        </Link>
+        </Button>
       <div className="grid md:grid-cols-5 gap-8 lg:gap-12">
         <div className="md:col-span-3">
           <div className="relative w-full aspect-video overflow-hidden rounded-lg shadow-lg bg-gradient-to-br from-primary/20 to-accent/20 mb-4">
@@ -421,5 +410,3 @@ export default function ListingDetailPage() {
     </div>
   );
 }
-
-    
