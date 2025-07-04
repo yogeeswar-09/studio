@@ -20,11 +20,10 @@ import {
   updateDoc,
   doc,
   getDoc,
+  setDoc,
   serverTimestamp,
   Timestamp,
-  getDocs,
   writeBatch,
-  limit,
 } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
@@ -142,21 +141,16 @@ function ChatPageContent() {
         }
         
         const sortedUids = [currentUser.uid, newChatWithUserId].sort();
+        const conversationId = sortedUids.join('_');
+        const conversationDocRef = doc(db, "conversations", conversationId);
         
-        // Find a conversation between these two users, regardless of the item.
-        const q = query(collection(db, "conversations"), where("participantUids", "==", sortedUids), limit(1));
-        const querySnapshot = await getDocs(q);
+        const docSnap = await getDoc(conversationDocRef);
         
-        let conversationId: string | null = null;
-        if (!querySnapshot.empty) {
-            conversationId = querySnapshot.docs[0].id;
-            console.log(`ChatPage: Found existing conversation: ${conversationId}`);
-        } else {
-            console.log(`ChatPage: No existing conversation found. Creating new one.`);
+        if (!docSnap.exists()) {
+            console.log(`ChatPage: No existing conversation found. Creating new one with ID ${conversationId}.`);
             const otherUser = await getCachedUserDetails(newChatWithUserId);
             if (otherUser) {
                 try {
-                    // Create a new generic conversation without a listingId.
                     const newConvoData = {
                         participantUids: sortedUids,
                         lastMessage: null,
@@ -164,8 +158,7 @@ function ChatPageContent() {
                         createdAt: serverTimestamp(),
                         updatedAt: serverTimestamp(),
                     };
-                    const docRef = await addDoc(collection(db, "conversations"), newConvoData);
-                    conversationId = docRef.id;
+                    await setDoc(conversationDocRef, newConvoData);
                     console.log(`ChatPage: New conversation created: ${conversationId}`);
                 } catch (error) {
                     console.error("Error creating new conversation:", error);
@@ -174,21 +167,21 @@ function ChatPageContent() {
             } else {
                 toast({ title: "Error", description: "Could not find user to chat with.", variant: "destructive" });
             }
+        } else {
+            console.log(`ChatPage: Found existing conversation: ${conversationId}`);
         }
 
         // Navigate to the chat, removing the 'newChatWith' and 'itemId' params
         const newParams = new URLSearchParams(searchParams.toString());
         newParams.delete('newChatWith');
         newParams.delete('itemId');
-        if (conversationId) {
-            newParams.set('chatId', conversationId);
-        }
+        newParams.set('chatId', conversationId);
         router.replace(`${pathname}?${newParams.toString()}`);
     };
     
     findOrCreateChat();
     
-  }, [searchParams, currentUser, router, toast, pathname, getCachedUserDetails]);
+  }, [searchParams.toString(), currentUser, router, toast, pathname, getCachedUserDetails]);
 
   // Effect 3: Handle selecting a chat from URL or defaulting to the first one
   useEffect(() => {
@@ -354,25 +347,27 @@ function ChatPageContent() {
   }
 
   return (
-    <div className="flex h-full overflow-hidden">
-      <div className="w-full md:w-1/3 lg:w-1/4 border-r hidden md:flex md:flex-col">
-        <ChatList
-          conversations={conversations}
-          currentUser={currentUser}
-          selectedChatId={selectedChatId}
-          onSelectChat={handleSelectChat}
-          isLoading={isLoadingConversations}
-        />
-      </div>
-      <div className="flex-1 flex flex-col bg-muted/20">
-        <ChatMessages
-          conversation={conversations.find(c => c.id === selectedChatId) || null} 
-          messages={messages}
-          currentUser={currentUser}
-          isLoading={isLoadingMessages}
-          otherParticipant={otherParticipantDetails} 
-        />
-        <ChatInput onSendMessage={handleSendMessage} disabled={!selectedChatId || isLoadingMessages} />
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex-1 flex overflow-hidden">
+        <div className="w-full md:w-1/3 lg:w-1/4 border-r hidden md:flex md:flex-col">
+          <ChatList
+            conversations={conversations}
+            currentUser={currentUser}
+            selectedChatId={selectedChatId}
+            onSelectChat={handleSelectChat}
+            isLoading={isLoadingConversations}
+          />
+        </div>
+        <div className="flex-1 flex flex-col bg-muted/20">
+          <ChatMessages
+            conversation={conversations.find(c => c.id === selectedChatId) || null} 
+            messages={messages}
+            currentUser={currentUser}
+            isLoading={isLoadingMessages}
+            otherParticipant={otherParticipantDetails} 
+          />
+          <ChatInput onSendMessage={handleSendMessage} disabled={!selectedChatId || isLoadingMessages} />
+        </div>
       </div>
     </div>
   );

@@ -13,7 +13,7 @@ import { ArrowLeft, MessageCircle, Edit3, Loader2, AlertTriangle, ShoppingBag, H
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
-import { doc, getDoc, Timestamp, collection, query, where, getDocs, addDoc, serverTimestamp, updateDoc, limit } from 'firebase/firestore';
+import { doc, getDoc, Timestamp, collection, query, where, getDocs, addDoc, serverTimestamp, updateDoc, writeBatch, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -121,43 +121,15 @@ export default function ListingDetailPage() {
     setIsSendingOffer(true);
     const offerMessage = `Hi! I would like to make an offer of ₹${parseFloat(offerPrice).toFixed(2)} for your item: "${listing.title}".`;
     const sortedUids = [currentUser.uid, seller.uid].sort();
+    const conversationId = sortedUids.join('_');
+    const conversationDocRef = doc(db, "conversations", conversationId);
 
     try {
-        // 1. Find or create conversation based on participants only
-        const conversationsRef = collection(db, "conversations");
-        const q = query(
-            conversationsRef,
-            where("participantUids", "==", sortedUids),
-            limit(1)
-        );
-        const querySnapshot = await getDocs(q);
+        const batch = writeBatch(db);
 
-        let conversationId: string;
-        let conversationDocRef;
-
-        if (!querySnapshot.empty) {
-            conversationId = querySnapshot.docs[0].id;
-            conversationDocRef = querySnapshot.docs[0].ref;
-        } else {
-            // Create a new generic conversation if one doesn't exist
-            const newConvoData = {
-                participantUids: sortedUids,
-                lastMessage: null,
-                unreadCount: { [currentUser.uid]: 0, [seller.uid]: 0 },
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-            };
-            const newDocRef = await addDoc(conversationsRef, newConvoData);
-            conversationId = newDocRef.id;
-            conversationDocRef = newDocRef;
-        }
-
-        // 2. Send message and update conversation
-        const messagesColRef = collection(db, "conversations", conversationId, "messages");
-        const convoSnap = await getDoc(conversationDocRef);
-        const currentUnreadCount = convoSnap.data()?.unreadCount?.[seller.uid] || 0;
-
-        await addDoc(messagesColRef, {
+        // 1. Add the new message to the subcollection
+        const newMessageRef = doc(collection(db, "conversations", conversationId, "messages"));
+        batch.set(newMessageRef, {
             senderId: currentUser.uid,
             receiverId: seller.uid,
             text: offerMessage,
@@ -165,7 +137,12 @@ export default function ListingDetailPage() {
             isRead: false,
         });
 
-        await updateDoc(conversationDocRef, {
+        // 2. Create or update the main conversation document
+        const convoSnap = await getDoc(conversationDocRef);
+        const currentUnreadCount = convoSnap.data()?.unreadCount?.[seller.uid] || 0;
+
+        const conversationData: any = {
+            participantUids: sortedUids,
             lastMessage: {
                 text: offerMessage,
                 senderId: currentUser.uid,
@@ -174,7 +151,16 @@ export default function ListingDetailPage() {
             updatedAt: serverTimestamp(),
             [`unreadCount.${seller.uid}`]: currentUnreadCount + 1,
             [`unreadCount.${currentUser.uid}`]: 0,
-        });
+        };
+        
+        if (!convoSnap.exists()) {
+            conversationData.createdAt = serverTimestamp();
+        }
+
+        // Use set with merge to create or update the conversation doc
+        batch.set(conversationDocRef, conversationData, { merge: true });
+        
+        await batch.commit();
         
         toast({ title: "Offer Sent!", description: "Your offer has been sent to the seller." });
         setIsOfferDialogOpen(false);
