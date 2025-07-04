@@ -8,23 +8,23 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 94%; /* Light Gray #f0f0f0 */
-    --foreground: 210 10% 23%; /* Dark Gray */
+    --background: 210 10% 15%; /* Dark Blue-Gray */
+    --foreground: 0 0% 96%; /* Light Gray Text */
 
-    --card: 0 0% 100%; /* White */
-    --card-foreground: 210 10% 23%;
+    --card: 210 10% 20%; /* Slightly lighter card */
+    --card-foreground: 0 0% 96%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 210 10% 23%;
+    --popover: 210 10% 18%;
+    --popover-foreground: 0 0% 96%;
 
     --primary: 207 68% 53%; /* Vibrant Blue #3498db */
     --primary-foreground: 0 0% 100%; /* White */
 
-    --secondary: 210 10% 85%; /* Lighter Gray for secondary elements */
-    --secondary-foreground: 210 10% 23%;
+    --secondary: 210 10% 30%; /* Lighter Gray for secondary elements */
+    --secondary-foreground: 0 0% 96%;
 
-    --muted: 210 10% 88%; /* Muted Gray */
-    --muted-foreground: 210 10% 45%;
+    --muted: 210 10% 25%;
+    --muted-foreground: 0 0% 60%;
 
     --accent: 28 80% 52%; /* Orange #e67e22 */
     --accent-foreground: 0 0% 100%; /* White */
@@ -32,29 +32,27 @@ body {
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 85%;
-    --input: 0 0% 100%; /* White input background */
+    --border: 210 10% 30%;
+    --input: 210 10% 20%;
     --ring: 207 68% 53%; /* Primary color for rings */
 
     --radius: 0.5rem;
-
-    /* Sidebar specific theme */
-    --sidebar-background: 0 0% 100%; /* White sidebar */
-    --sidebar-foreground: 210 10% 23%; /* Dark gray text */
-    --sidebar-primary: 207 68% 53%; /* Vibrant Blue for active/icons */
-    --sidebar-primary-foreground: 0 0% 100%; /* White text on blue */
-    --sidebar-accent: 210 10% 95%; /* Light gray for hover/accent backgrounds */
-    --sidebar-accent-foreground: 207 68% 53%; /* Blue text on hover */
-    --sidebar-border: 0 0% 90%;
+    
+    --sidebar-background: 210 10% 12%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-primary: 207 68% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 10% 20%;
+    --sidebar-accent-foreground: 207 68% 53%;
+    --sidebar-border: 210 10% 25%;
     --sidebar-ring: 207 68% 53%;
   }
 
   .dark {
-    /* Define dark theme if needed, for now, focusing on light theme as per proposal */
     --background: 210 10% 15%;
     --foreground: 0 0% 96%;
 
-    --card: 210 10% 18%;
+    --card: 210 10% 20%;
     --card-foreground: 0 0% 96%;
 
     --popover: 210 10% 18%;
@@ -63,7 +61,7 @@ body {
     --primary: 207 68% 53%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 10% 25%;
+    --secondary: 210 10% 30%;
     --secondary-foreground: 0 0% 96%;
 
     --muted: 210 10% 25%;
@@ -108,7 +106,7 @@ body {
     radial-gradient(circle at 10% 90%, hsl(var(--secondary) / 0.05) 0%, transparent 30%),
     radial-gradient(circle at 80% 10%, hsl(var(--primary) / 0.08) 0%, transparent 30%);
   background-size: 200% 200%;
-  animation: move-particles 30s linear infinite;
+  animation: move-particles 60s linear infinite; /* Slower animation */
 }
 
 @keyframes move-particles {
