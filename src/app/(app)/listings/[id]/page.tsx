@@ -250,11 +250,9 @@ export default function ListingDetailPage() {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <Link href="/browse" passHref>
-        <Button variant="outline" className="mb-6">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to All Listings
-        </Button>
-      </Link>
+      <Button variant="outline" className="mb-6" onClick={() => router.push('/browse')}>
+        <ArrowLeft className="mr-2 h-4 w-4" /> Back to All Listings
+      </Button>
       <div className="grid md:grid-cols-5 gap-8 lg:gap-12">
         <div className="md:col-span-3">
           <div className="relative w-full aspect-video overflow-hidden rounded-lg shadow-lg bg-gradient-to-br from-primary/20 to-accent/20 mb-4">
