@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -72,9 +73,6 @@ export default function AboutUsPage() {
                 </p>
                 <p>
                   You can reach Team - Code Crafters at: <a href="mailto:Codecraftersmlr@gmail.com" className="text-primary hover:underline font-semibold">Codecraftersmlr@gmail.com</a>.
-                </p>
-                <p>
-                  Alternatively, you can typically find us in the <strong className="text-primary">CSM-B section labs</strong> during college hours, or you can reach out to one of our team representatives.
                 </p>
               </CardContent>
             </Card>
