@@ -357,7 +357,7 @@ function ChatPageContent() {
           isLoading={isLoadingConversations}
         />
       </div>
-      <div className="flex-1 flex flex-col bg-muted/20 min-h-0">
+      <div className="flex-1 grid grid-rows-[1fr_auto] bg-muted/20">
         <ChatMessages
           conversation={conversations.find(c => c.id === selectedChatId) || null} 
           messages={messages}
