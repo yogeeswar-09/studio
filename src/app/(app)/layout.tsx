@@ -152,7 +152,7 @@ export default function AppLayout({
         <SidebarInset className="grid h-svh grid-rows-[auto_1fr]">
           <Header />
           <main className={cn(
-            "relative",
+            "relative min-h-0", // Added min-h-0 to constrain grid item
             !isChatPage && "animated-particle-bg",
             isChatPage ? "overflow-hidden" : "overflow-y-auto",
             !isChatPage && "p-4 sm:p-6 lg:p-8"
