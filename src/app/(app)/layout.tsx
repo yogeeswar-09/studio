@@ -15,7 +15,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Settings, LogOut } from "lucide-react";
+import { Settings, LogOut, Loader2 } from "lucide-react";
 import { CampusKartIcon } from "@/components/common/CampusKartIcon"; // Import new icon
 import { CursorFollower } from "@/components/common/CursorFollower"; // Import new component
 import Link from "next/link";
@@ -26,14 +26,28 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   // Redirect logic is now in AuthContext using useEffect with pathname
   
+  const SplashScreen = ({ message }: { message: string }) => (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background text-center p-6 overflow-hidden animated-particle-bg">
+      <div className="relative z-10 flex flex-col items-center">
+        <div className="mb-12 animate-logo-pulse animate-shining-glow">
+          <AppLogo iconSize={80} textSize="text-6xl" />
+        </div>
+        <div className="flex items-center text-xl text-muted-foreground animate-slide-up-fade-in" style={{ animationDelay: '0.3s' }}>
+          <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+          {message}
+        </div>
+      </div>
+    </div>
+  );
+
   if (isLoading) {
-    return <div className="flex h-screen items-center justify-center">Loading user...</div>;
+    return <SplashScreen message="Loading..." />;
   }
 
   if (!user) {
     // This case should ideally be handled by AuthContext redirect.
     // If it reaches here, it might mean a brief moment before redirect or an issue.
-    return <div className="flex h-screen items-center justify-center">Redirecting to login...</div>;
+    return <SplashScreen message="Redirecting..." />;
   }
   
   return <>{children}</>;
