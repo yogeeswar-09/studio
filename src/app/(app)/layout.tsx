@@ -145,8 +145,9 @@ export default function AppLayout({
         <SidebarInset className="grid h-svh grid-rows-[auto_1fr]">
           <Header />
           <main className={cn(
-            "relative animated-particle-bg", // Removed flex-1, added relative
-            isChatPage ? "overflow-hidden" : "overflow-y-auto", // Changed to overflow-y-auto for other pages
+            "relative",
+            !isChatPage && "animated-particle-bg",
+            isChatPage ? "overflow-hidden" : "overflow-y-auto",
             !isChatPage && "p-4 sm:p-6 lg:p-8"
           )}>
             {children}
