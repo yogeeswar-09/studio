@@ -38,10 +38,10 @@ export default function AboutUsPage() {
               <CardContent className="text-foreground/90">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
-                    { name: "Vennala", role: "Developer (CSM)" },
-                    { name: "Arjun", role: "Developer (CSM)" },
-                    { name: "Siri Chandana", role: "Developer (CSM)" },
                     { name: "Yogeeswar", role: "Developer (CSM)" },
+                    { name: "Siri Chandana", role: "Developer (CSM)" },
+                    { name: "Arjun", role: "Developer (CSM)" },
+                    { name: "Vennala", role: "Developer (CSM)" },
                   ].map((member) => (
                     <div key={member.name} className="p-3 bg-muted/50 rounded-lg flex items-center space-x-3">
                       <UserCheck className="h-5 w-5 text-primary" />
