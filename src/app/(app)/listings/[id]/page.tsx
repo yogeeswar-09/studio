@@ -256,7 +256,7 @@ export default function ListingDetailPage() {
       </Button>
       <div className="grid md:grid-cols-5 gap-8 lg:gap-12">
         <div className="md:col-span-3">
-          <div className="relative w-full aspect-video overflow-hidden rounded-lg shadow-lg bg-muted mb-4">
+          <div className="relative w-full aspect-video overflow-hidden rounded-lg shadow-lg bg-gradient-to-br from-primary/20 to-accent/20 mb-4">
             <Image
               src={listing.imageUrl}
               alt={listing.title}
