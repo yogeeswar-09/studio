@@ -193,7 +193,7 @@ export default function ListingDetailPage() {
   if (isLoading) {
     return (
       <div className="container mx-auto py-8 px-4">
-        <Skeleton className="h-9 w-24 mb-8" />
+        <Skeleton className="h-10 w-36 mb-8" />
         <div className="grid md:grid-cols-5 gap-8 lg:gap-12">
           <div className="md:col-span-3">
             <Skeleton className="w-full aspect-video rounded-lg" />
@@ -256,8 +256,8 @@ export default function ListingDetailPage() {
       <Link
         href="/listings"
         className={cn(
-          buttonVariants({ variant: "ghost" }),
-          "mb-8 flex items-center text-sm text-muted-foreground hover:text-foreground"
+          buttonVariants({ variant: "outline" }),
+          "mb-8"
         )}
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
