@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ChatMessage, ChatConversation, User } from '@/types';
@@ -45,7 +46,7 @@ export function ChatMessages({ conversation, messages, currentUser, isLoading, o
   const listing = conversation?.listingId ? { id: conversation.listingId } : null; // Placeholder for actual listing details if needed in header
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Chat Header */}
       {conversation && otherParticipant && (
         <div className="p-3 md:p-4 border-b flex items-center justify-between bg-card shadow-sm">
