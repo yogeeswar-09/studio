@@ -149,13 +149,13 @@ export default function AppLayout({
           </SidebarFooter>
         </Sidebar>
 
-        <SidebarInset className="grid h-svh grid-rows-[auto_1fr]">
+        <SidebarInset className="flex h-screen flex-col">
           <Header />
           <main className={cn(
-            "relative min-h-0", // Added min-h-0 to constrain grid item
-            !isChatPage && "animated-particle-bg",
-            isChatPage ? "overflow-hidden" : "overflow-y-auto",
-            !isChatPage && "p-4 sm:p-6 lg:p-8"
+            "relative flex-1",
+            isChatPage 
+              ? "overflow-hidden" 
+              : "overflow-y-auto p-4 sm:p-6 lg:p-8 animated-particle-bg"
           )}>
             {children}
           </main>
