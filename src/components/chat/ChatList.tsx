@@ -6,34 +6,38 @@ import { ChatItem } from './ChatItem';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Search, MessageSquarePlus } from 'lucide-react';
-import Link from 'next/link';
-import { Button } from '../ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ChatListProps {
   conversations: ChatConversation[];
-  currentUser: User | null; // Full User object
+  currentUser: User | null;
   selectedChatId: string | null;
   onSelectChat: (chatId: string) => void;
+  isLoading: boolean;
 }
 
-export function ChatList({ conversations, currentUser, selectedChatId, onSelectChat }: ChatListProps) {
-  // Add search/filter state if needed
-  // const [searchTerm, setSearchTerm] = useState('');
-  // const filteredConversations = conversations.filter(...)
-
+export function ChatList({ conversations, currentUser, selectedChatId, onSelectChat, isLoading }: ChatListProps) {
   if (!currentUser) return null;
+
+  const ChatListSkeleton = () => (
+    <div className="p-2 space-y-1">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="flex items-center space-x-3 p-3">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="flex flex-col h-full bg-card">
       <div className="p-4 border-b">
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-xl font-semibold text-foreground">Messages</h2>
-          {/* Optional: Button to start a new chat manually, though most chats start from listings */}
-          {/* <Link href="/browse" passHref>
-            <Button variant="ghost" size="icon" title="Start new chat">
-              <MessageSquarePlus className="h-5 w-5 text-primary" />
-            </Button>
-          </Link> */}
         </div>
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -41,7 +45,9 @@ export function ChatList({ conversations, currentUser, selectedChatId, onSelectC
         </div>
       </div>
       <ScrollArea className="flex-1">
-        {conversations.length > 0 ? (
+        {isLoading ? (
+          <ChatListSkeleton />
+        ) : conversations.length > 0 ? (
           <div className="p-2 space-y-1">
             {conversations.map(convo => {
                const otherParticipant = convo.participants?.find(p => p.uid !== currentUser.uid);
@@ -50,7 +56,7 @@ export function ChatList({ conversations, currentUser, selectedChatId, onSelectC
                     key={convo.id}
                     conversation={convo}
                     currentUserUid={currentUser.uid}
-                    otherParticipant={otherParticipant} // Pass the fetched other participant
+                    otherParticipant={otherParticipant}
                     isSelected={selectedChatId === convo.id}
                     onSelect={() => onSelectChat(convo.id)}
                 />
