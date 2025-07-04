@@ -230,7 +230,9 @@ export default function ListingDetailPage() {
         <AlertTriangle className="mx-auto h-16 w-16 text-destructive mb-4" />
         <h3 className="text-xl font-semibold text-foreground mb-2">Listing not found</h3>
         <p className="text-muted-foreground">This item may have been removed or the link is incorrect.</p>
-        <Button onClick={() => router.push('/browse')} className="mt-6">Browse Other Items</Button>
+        <Button asChild className="mt-6">
+          <Link href="/browse">Browse Other Items</Link>
+        </Button>
       </div>
     );
   }
@@ -250,8 +252,10 @@ export default function ListingDetailPage() {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <Button variant="outline" className="mb-6" onClick={() => router.push('/browse')}>
-        <ArrowLeft className="mr-2 h-4 w-4" /> Back to All Listings
+      <Button asChild variant="outline" className="mb-6">
+        <Link href="/browse">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to All Listings
+        </Link>
       </Button>
       <div className="grid md:grid-cols-5 gap-8 lg:gap-12">
         <div className="md:col-span-3">
