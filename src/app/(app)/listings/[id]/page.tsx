@@ -191,8 +191,10 @@ export default function ListingDetailPage() {
   if (isLoading) {
     return (
       <div className="container mx-auto py-8 px-4">
-        <Button variant="outline" disabled className="mb-6">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to All Listings
+        <Button asChild variant="outline" className="mb-6">
+          <Link href="/listings">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to All Listings
+          </Link>
         </Button>
         <div className="grid md:grid-cols-5 gap-8 lg:gap-12">
           <div className="md:col-span-3">
@@ -231,7 +233,7 @@ export default function ListingDetailPage() {
         <h3 className="text-xl font-semibold text-foreground mb-2">Listing not found</h3>
         <p className="text-muted-foreground">This item may have been removed or the link is incorrect.</p>
         <Button asChild className="mt-6">
-          <Link href="/browse">Browse Other Items</Link>
+          <Link href="/listings">Browse Other Items</Link>
         </Button>
       </div>
     );
@@ -253,7 +255,7 @@ export default function ListingDetailPage() {
   return (
     <div className="container mx-auto py-8 px-4">
       <Button asChild variant="outline" className="mb-6">
-        <Link href="/browse">
+        <Link href="/listings">
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to All Listings
         </Link>
       </Button>
