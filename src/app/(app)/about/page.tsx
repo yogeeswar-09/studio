@@ -2,7 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Mail, Users, BookOpenCheck, UserCheck } from "lucide-react";
+import { Mail, Users, BookOpenCheck, UserCheck, Shield } from "lucide-react";
 
 export default function AboutUsPage() {
   try {
@@ -32,7 +32,7 @@ export default function AboutUsPage() {
             <Card className="shadow-lg">
               <CardHeader>
                 <CardTitle className="text-2xl font-semibold text-accent flex items-center">
-                  <Users className="mr-3 h-6 w-6" /> Our Team - Code Crafters
+                  <Users className="mr-3 h-6 w-6" /> Our Team
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-foreground/90">
@@ -68,6 +68,58 @@ export default function AboutUsPage() {
                 <p>
                   You can reach Team - Code Crafters at: <a href="mailto:Codecraftersmlr@gmail.com" className="text-primary hover:underline font-semibold">Codecraftersmlr@gmail.com</a>.
                 </p>
+              </CardContent>
+            </Card>
+
+            <Card id="privacy" className="shadow-lg scroll-mt-20">
+              <CardHeader>
+                <CardTitle className="text-2xl font-semibold flex items-center">
+                   <Shield className="mr-3 h-6 w-6 text-muted-foreground" /> Privacy Policy
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground/80">
+                  Your privacy is critically important to us. This Privacy Policy outlines how CampusKart ("we", "us", "our") collects, uses, and protects your information when you use our platform.
+                </p>
+                
+                <ol className="list-decimal list-inside space-y-3">
+                  <li>
+                    <strong>Information We Collect:</strong>
+                    <ul className="list-disc list-inside ml-4 mt-1">
+                      <li><strong>Personal Identification Information:</strong> Name, MLRIT email address, year, and branch, provided during registration.</li>
+                      <li><strong>User-Generated Content:</strong> Information you provide in listings (titles, descriptions, images, prices), and messages you send in chats.</li>
+                      <li><strong>Usage Data:</strong> We may collect non-personal information about how you interact with our service, such as pages visited and features used, to improve our platform.</li>
+                    </ul>
+                  </li>
+                  <li>
+                    <strong>How We Use Your Information:</strong>
+                    <ul className="list-disc list-inside ml-4 mt-1">
+                        <li>To create and manage your account and facilitate your use of the platform.</li>
+                        <li>To enable communication between buyers and sellers.</li>
+                        <li>To display your listings to other users.</li>
+                        <li>To personalize your experience and improve our services.</li>
+                        <li>To communicate with you regarding your account or service updates.</li>
+                    </ul>
+                  </li>
+                  <li>
+                    <strong>Data Sharing and Disclosure:</strong> We do not sell, trade, or rent your personal identification information to third parties. Your information (name, email) may be visible to other users you interact with, particularly in chat, to facilitate transactions. We may disclose information if required by law or in response to valid requests by public authorities.
+                  </li>
+                  <li>
+                    <strong>Data Security:</strong> We implement a variety of security measures to maintain the safety of your personal information. However, no method of transmission over the Internet or method of electronic storage is 100% secure. While we strive to use commercially acceptable means to protect your data, we cannot guarantee its absolute security.
+                  </li>
+                  <li>
+                    <strong>User Rights:</strong> You have the right to access, update, or delete your personal information. You can manage your profile information from the 'Account Settings' tab on your profile page. For account deletion requests, please contact us directly.
+                  </li>
+                  <li>
+                    <strong>Compliance with Law:</strong> This privacy policy is framed in compliance with the Information Technology Act, 2000, and its amendments, including the Information Technology (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011, and other applicable laws of India. We will cooperate with government and law enforcement officials to enforce and comply with the law.
+                  </li>
+                  <li>
+                    <strong>Changes to This Policy:</strong> We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page. You are advised to review this Privacy Policy periodically for any changes.
+                  </li>
+                   <li>
+                    <strong>Contact Us:</strong> If you have any questions about this Privacy Policy, please contact us at <a href="mailto:Codecraftersmlr@gmail.com" className="text-primary hover:underline">Codecraftersmlr@gmail.com</a>.
+                  </li>
+                </ol>
               </CardContent>
             </Card>
 
