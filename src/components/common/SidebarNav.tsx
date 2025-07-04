@@ -25,7 +25,8 @@ import {
   Calculator,
   FlaskConical,
   Tag, 
-  Info, // Added Info icon
+  Info,
+  Star,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { mockCategories, type ListingCategory } from "@/lib/mock-data";
@@ -44,7 +45,8 @@ const mainNavItems: NavItem[] = [
   { href: "/create-listing", label: "Sell Item", icon: PlusCircle },
   { href: "/chat", label: "Messages", icon: MessageCircle },
   { href: "/profile", label: "My Profile", icon: User },
-  { href: "/about", label: "About Us", icon: Info, matchExact: true }, // Added About Us link
+  { href: "/premium", label: "Go Premium", icon: Star, matchExact: true },
+  { href: "/about", label: "About Us", icon: Info, matchExact: true },
 ];
 
 const categoryIcons: Record<ListingCategory, LucideIcon> = {

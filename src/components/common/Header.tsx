@@ -1,3 +1,4 @@
+
 "use client";
 
 import { AppLogo } from "@/components/common/AppLogo";
@@ -5,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
-import { LogOut, User as UserIcon, Settings, LayoutGrid, SidebarOpen } from "lucide-react";
+import { LogOut, User as UserIcon, Settings, LayoutGrid, SidebarOpen, Star } from "lucide-react";
 import Link from "next/link";
 import { useSidebar } from "@/components/ui/sidebar"; 
 import { ThemeToggle } from "./ThemeToggle"; // Added import
@@ -90,6 +91,13 @@ export function Header() {
                   <Link href="/profile?tab=settings"> {/* Example of navigating to a tab */}
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/premium">
+                    <Star className="mr-2 h-4 w-4 text-yellow-500" />
+                    <span>Upgrade to Premium</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
