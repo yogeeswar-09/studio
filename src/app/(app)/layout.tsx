@@ -1,6 +1,7 @@
 
 "use client"; // Add this directive
 
+import { usePathname } from "next/navigation";
 import { Header } from "@/components/common/Header";
 import { SidebarNav } from "@/components/common/SidebarNav";
 import { AppLogo } from "@/components/common/AppLogo";
@@ -106,6 +107,8 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const isChatPage = pathname.startsWith('/chat');
 
   return (
     <AuthGuard>
@@ -141,7 +144,10 @@ export default function AppLayout({
 
         <SidebarInset>
           <Header />
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto animated-particle-bg">
+          <main className={cn(
+            "flex-1 overflow-auto animated-particle-bg",
+            !isChatPage && "p-4 sm:p-6 lg:p-8"
+          )}>
             {children}
           </main>
         </SidebarInset>
