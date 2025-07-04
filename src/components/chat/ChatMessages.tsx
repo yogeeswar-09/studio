@@ -46,7 +46,7 @@ export function ChatMessages({ conversation, messages, currentUser, isLoading, o
   const listing = conversation?.listingId ? { id: conversation.listingId } : null; // Placeholder for actual listing details if needed in header
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-y-hidden">
+    <div className="grid grid-rows-[auto_1fr] h-full overflow-hidden">
       {/* Chat Header */}
       {conversation && otherParticipant && (
         <div className="p-3 md:p-4 border-b flex items-center justify-between bg-card shadow-sm">
@@ -84,7 +84,7 @@ export function ChatMessages({ conversation, messages, currentUser, isLoading, o
 
 
       {/* Messages Area */}
-      <ScrollArea className="flex-1 p-4 bg-background">
+      <ScrollArea className="p-4 bg-background">
         {isLoading && messages.length === 0 ? (
             <div className="flex justify-center items-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
