@@ -193,7 +193,6 @@ export default function ListingDetailPage() {
   if (isLoading) {
     return (
       <div className="container mx-auto py-8 px-4">
-        <Skeleton className="h-10 w-36 mb-8" />
         <div className="grid md:grid-cols-5 gap-8 lg:gap-12">
           <div className="md:col-span-3">
             <Skeleton className="w-full aspect-video rounded-lg" />
@@ -227,12 +226,6 @@ export default function ListingDetailPage() {
   if (!listing) {
     return (
       <div className="container mx-auto py-8 text-center">
-        <Button asChild variant="outline" className="mb-8">
-            <Link href="/listings">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Listings
-            </Link>
-        </Button>
         <AlertTriangle className="mx-auto h-16 w-16 text-destructive mb-4" />
         <h3 className="text-xl font-semibold text-foreground mb-2">Listing not found</h3>
         <p className="text-muted-foreground">This item may have been removed or the link is incorrect.</p>
@@ -255,12 +248,6 @@ export default function ListingDetailPage() {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <Button asChild variant="outline" className="mb-8">
-        <Link href="/listings">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Listings
-        </Link>
-      </Button>
       <div className="grid md:grid-cols-5 gap-8 lg:gap-12">
         <div className="md:col-span-3">
           <div className="relative w-full aspect-video overflow-hidden rounded-lg shadow-lg bg-gradient-to-br from-primary/20 to-accent/20 mb-4">
