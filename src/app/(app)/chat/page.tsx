@@ -348,7 +348,7 @@ function ChatPageContent() {
 
   return (
     <div className="flex h-full overflow-hidden">
-      <div className="w-full md:w-1/3 lg:w-1/4 border-r hidden md:flex md:flex-col">
+      <div className="w-full md:w-1/4 lg:w-[300px] flex-shrink-0 border-r hidden md:flex md:flex-col">
         <ChatList
           conversations={conversations}
           currentUser={currentUser}
