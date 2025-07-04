@@ -111,28 +111,55 @@ body {
 .animated-particle-bg {
   background-color: hsl(var(--background));
   
-  /* Only glow layers for better performance */
+  /* Multiple layers: soft glows + sharp sparkles */
   background-image: 
+    /* Soft Glows */
     radial-gradient(circle at 25% 30%, hsl(var(--primary) / 0.12) 0%, transparent 40%),
     radial-gradient(circle at 75% 80%, hsl(var(--accent) / 0.12) 0%, transparent 40%),
     radial-gradient(circle at 10% 90%, hsl(var(--primary) / 0.08) 0%, transparent 30%),
-    radial-gradient(circle at 80% 10%, hsl(var(--accent) / 0.08) 0%, transparent 30%);
+    radial-gradient(circle at 80% 10%, hsl(var(--accent) / 0.08) 0%, transparent 30%),
+    /* Sparkle Particles */
+    radial-gradient(circle at 15% 85%, hsl(var(--primary-foreground) / 0.3) 1px, transparent 2px),
+    radial-gradient(circle at 65% 15%, hsl(var(--primary-foreground) / 0.4) 1px, transparent 2px),
+    radial-gradient(circle at 45% 50%, hsl(var(--accent) / 0.5) 1.5px, transparent 2.5px),
+    radial-gradient(circle at 95% 65%, hsl(var(--primary) / 0.3) 1.5px, transparent 2.5px);
   
   background-size: 
+    /* The size for each corresponding background-image layer */
+    200% 200%,
+    200% 200%,
+    200% 200%,
+    200% 200%,
     200% 200%,
     200% 200%,
     200% 200%,
     200% 200%;
 
-  /* Use a simpler, smoother animation */
+  /* A single animation will move all layers at the same pace */
   animation: move-glows 40s linear infinite alternate;
 }
 
 .dark .animated-particle-bg {
-  /* Glows for Dark Theme */
+  /* Glows and Sparkles for Dark Theme */
   background-image:
     radial-gradient(circle at 25% 30%, hsl(var(--primary) / 0.15) 0%, transparent 40%),
     radial-gradient(circle at 75% 80%, hsl(var(--accent) / 0.15) 0%, transparent 40%),
     radial-gradient(circle at 10% 90%, hsl(var(--secondary) / 0.08) 0%, transparent 30%),
-    radial-gradient(circle at 80% 10%, hsl(var(--primary) / 0.1) 0%, transparent 30%);
+    radial-gradient(circle at 80% 10%, hsl(var(--primary) / 0.1) 0%, transparent 30%),
+    /* Sparkle Particles for dark theme - made slightly more opaque */
+    radial-gradient(circle at 15% 85%, hsl(var(--primary-foreground) / 0.5) 1px, transparent 2px),
+    radial-gradient(circle at 65% 15%, hsl(var(--primary-foreground) / 0.6) 1px, transparent 2px),
+    radial-gradient(circle at 45% 50%, hsl(var(--accent) / 0.7) 1.5px, transparent 2.5px),
+    radial-gradient(circle at 95% 65%, hsl(var(--primary) / 0.5) 1.5px, transparent 2.5px);
+  
+  /* Must redeclare background-size to match the number of layers in the dark theme's background-image */
+   background-size: 
+    200% 200%,
+    200% 200%,
+    200% 200%,
+    200% 200%,
+    200% 200%,
+    200% 200%,
+    200% 200%,
+    200% 200%;
 }
