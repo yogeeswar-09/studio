@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { ChatMessage, ChatConversation, User } from '@/types';
@@ -7,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useEffect, useRef } from 'react';
 import { Button } from '../ui/button';
-import { Phone, Video, AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface ChatMessagesProps {
@@ -64,14 +63,6 @@ export function ChatMessages({ conversation, messages, currentUser, isLoading, o
               )}
               {/* <p className="text-xs text-muted-foreground">Online</p> */}
             </div>
-          </div>
-          <div className="flex items-center space-x-1 md:space-x-2">
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
-              <Phone className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
-              <Video className="h-5 w-5" />
-            </Button>
           </div>
         </div>
       )}
