@@ -135,15 +135,15 @@ body {
   
   /* Different sizes for each layer for parallax effect */
   background-size: 
-    75px 75px,   /* Spark 1 density */
-    150px 150px,  /* Spark 2 density */
+    150px 150px,   /* Spark 1 density (Increased from 75px) */
+    300px 300px,  /* Spark 2 density (Increased from 150px) */
     200% 200%,    /* Glows */
     200% 200%,
     200% 200%,
     200% 200%;
 
   /* Single animation driving all layers at different speeds */
-  animation: move-particles 90s linear infinite;
+  animation: move-particles 120s linear infinite; /* Slowed down from 90s */
 }
 
 .dark .animated-particle-bg {
