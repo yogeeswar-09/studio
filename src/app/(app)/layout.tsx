@@ -1,3 +1,4 @@
+
 "use client"; // Add this directive
 
 import { Header } from "@/components/common/Header";
@@ -60,8 +61,14 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   // This is the initial loading phase. It shows the full-screen splash.
   // `!isInitialLoadComplete` ensures this block runs only during the very first load.
   if (!isInitialLoadComplete) {
-    // `!isLoading` will be true when the exit animation should start.
-    return <SplashScreen message={!isLoading && !user ? "Redirecting..." : "Loading..."} isExiting={!isLoading} />;
+    return (
+        <>
+            {/* Render the splash screen on top */}
+            <SplashScreen message={!isLoading && !user ? "Redirecting..." : "Loading..."} isExiting={!isLoading} />
+            {/* Render the main layout underneath, it will be hidden by the splash screen initially */}
+            {children}
+        </>
+    );
   }
   
   // After the first load, we use a much simpler loader for any subsequent auth checks.
@@ -84,7 +91,13 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
   
-  return <>{children}</>;
+  // Once fully loaded and authenticated, show the main content and the cursor follower
+  return (
+    <>
+      <CursorFollower />
+      {children}
+    </>
+  );
 }
 
 
@@ -96,8 +109,8 @@ export default function AppLayout({
 
   return (
     <AuthGuard>
-      <CursorFollower />
-      <SidebarProvider defaultOpen={false}> {/* Changed defaultOpen to false */}
+      {/* CursorFollower is now managed by AuthGuard to prevent it showing on splash */}
+      <SidebarProvider defaultOpen={false}>
         <Sidebar collapsible="icon" variant="sidebar" side="left" className="border-r">
           <SidebarHeader className="p-4">
             {/* Logo visible when sidebar expanded, icon-only could show smaller version or just icon */}
