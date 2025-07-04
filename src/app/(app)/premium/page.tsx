@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Check, X, Star } from "lucide-react";
 
 const features = [
-  { feature: "List Items for Sale", free: "Unlimited", premium: "Unlimited" },
+  { feature: "List Items for Sale", free: "Up to 5 Active Listings", premium: "Unlimited" },
   { feature: "Chat with Sellers/Buyers", free: true, premium: true },
   { feature: "Featured Listings per Month", free: "None", premium: "2 Credits" },
   { feature: "Listing 'Bumps' per Month", free: "None", premium: "5 Credits" },
