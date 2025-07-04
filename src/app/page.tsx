@@ -1,3 +1,4 @@
+
 "use client";
 
 import { AppLogo } from "@/components/common/AppLogo";
@@ -10,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { CampusKartIcon } from "@/components/common/CampusKartIcon";
 
 export default function LandingPage() {
   const { user, isLoading } = useAuth();
@@ -47,8 +49,13 @@ export default function LandingPage() {
   if (isLoading || user) { // Keep showing loading screen if user exists to avoid flash of content before redirect
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-center p-6 overflow-hidden">
-        <div className="mb-12 animate-logo-pulse animate-shining-glow">
-          <AppLogo iconSize={80} textSize="text-6xl" />
+        <div className="mb-12 animate-logo-pulse">
+          <div className="flex items-center gap-2">
+            <CampusKartIcon className="text-primary" style={{ width: 80, height: 80 }} />
+            <span className="font-bold text-6xl tracking-tight paint-drip-text">
+              CampusKart
+            </span>
+          </div>
         </div>
         <Progress value={progress} className="w-1/2 md:w-1/3 mx-auto h-2.5 bg-primary/30 [&>div]:bg-primary" />
       </div>

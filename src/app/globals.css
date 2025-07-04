@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -188,4 +189,28 @@ body {
     radial-gradient(circle at 95% 40%, hsl(var(--accent) / 0.6) 1px, transparent 2.5px),
     radial-gradient(circle at 50% 10%, hsl(var(--primary-foreground) / 0.5) 1.5px, transparent 3px),
     radial-gradient(circle at 70% 20%, hsl(var(--primary-foreground) / 0.4) 1px, transparent 2px);
+}
+
+@keyframes paint-flow {
+  from {
+    background-position: 50% 0%;
+  }
+  to {
+    background-position: 50% 100%;
+  }
+}
+
+.paint-drip-text {
+  background-image: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 0.9) 0%,
+    hsl(var(--primary)) 20%,
+    hsl(var(--primary)) 70%,
+    hsl(var(--accent)) 100%
+  );
+  background-size: 100% 300%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: paint-flow 4s ease-in-out infinite alternate;
 }

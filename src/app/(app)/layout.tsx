@@ -1,3 +1,4 @@
+
 "use client"; // Add this directive
 
 import { usePathname } from "next/navigation";
@@ -50,7 +51,13 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       )}
     >
       <div className="relative z-10 flex flex-col items-center animate-text-focus-in" style={{ animationDuration: '0.8s' }}>
-        <AppLogo iconSize={80} textSize="text-6xl" />
+        {/* Replaced AppLogo with custom structure for animation */}
+        <div className="flex items-center gap-2">
+          <CampusKartIcon className="text-primary" style={{ width: 80, height: 80 }} />
+          <span className="font-bold text-6xl tracking-tight paint-drip-text">
+            CampusKart
+          </span>
+        </div>
         <p className="mt-8 text-2xl text-primary-foreground tracking-widest">
           {message}
         </p>
