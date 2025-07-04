@@ -191,8 +191,8 @@ export default function ListingDetailPage() {
   if (isLoading) {
     return (
       <div className="container mx-auto py-8 px-4">
-        <Button variant="ghost" disabled className="mb-6">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back
+        <Button variant="outline" disabled className="mb-6">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to All Listings
         </Button>
         <div className="grid md:grid-cols-5 gap-8 lg:gap-12">
           <div className="md:col-span-3">
@@ -250,9 +250,11 @@ export default function ListingDetailPage() {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <Button variant="ghost" onClick={() => window.history.back()} className="mb-6 text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="mr-2 h-4 w-4" /> Back
-      </Button>
+      <Link href="/browse" passHref>
+        <Button variant="outline" className="mb-6">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to All Listings
+        </Button>
+      </Link>
       <div className="grid md:grid-cols-5 gap-8 lg:gap-12">
         <div className="md:col-span-3">
           <div className="relative w-full aspect-video overflow-hidden rounded-lg shadow-lg bg-gradient-to-br from-primary/20 to-accent/20 mb-4">
