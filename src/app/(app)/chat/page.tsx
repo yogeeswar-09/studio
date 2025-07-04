@@ -347,27 +347,25 @@ function ChatPageContent() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="flex-1 flex overflow-hidden">
-        <div className="w-full md:w-1/3 lg:w-1/4 border-r hidden md:flex md:flex-col">
-          <ChatList
-            conversations={conversations}
-            currentUser={currentUser}
-            selectedChatId={selectedChatId}
-            onSelectChat={handleSelectChat}
-            isLoading={isLoadingConversations}
-          />
-        </div>
-        <div className="flex-1 flex flex-col bg-muted/20">
-          <ChatMessages
-            conversation={conversations.find(c => c.id === selectedChatId) || null} 
-            messages={messages}
-            currentUser={currentUser}
-            isLoading={isLoadingMessages}
-            otherParticipant={otherParticipantDetails} 
-          />
-          <ChatInput onSendMessage={handleSendMessage} disabled={!selectedChatId || isLoadingMessages} />
-        </div>
+    <div className="flex h-full overflow-hidden">
+      <div className="w-full md:w-1/3 lg:w-1/4 border-r hidden md:flex md:flex-col">
+        <ChatList
+          conversations={conversations}
+          currentUser={currentUser}
+          selectedChatId={selectedChatId}
+          onSelectChat={handleSelectChat}
+          isLoading={isLoadingConversations}
+        />
+      </div>
+      <div className="flex-1 flex flex-col bg-muted/20">
+        <ChatMessages
+          conversation={conversations.find(c => c.id === selectedChatId) || null} 
+          messages={messages}
+          currentUser={currentUser}
+          isLoading={isLoadingMessages}
+          otherParticipant={otherParticipantDetails} 
+        />
+        <ChatInput onSendMessage={handleSendMessage} disabled={!selectedChatId || isLoadingMessages} />
       </div>
     </div>
   );

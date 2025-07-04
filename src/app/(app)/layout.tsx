@@ -145,7 +145,8 @@ export default function AppLayout({
         <SidebarInset>
           <Header />
           <main className={cn(
-            "flex-1 overflow-auto animated-particle-bg",
+            "flex-1 animated-particle-bg",
+            isChatPage ? "overflow-hidden" : "overflow-auto",
             !isChatPage && "p-4 sm:p-6 lg:p-8"
           )}>
             {children}
