@@ -84,7 +84,7 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-0">
-      <div className="mb-12 p-8 bg-gradient-to-r from-primary to-orange-500 rounded-xl text-primary-foreground animate-pulsing-glow-border">
+      <div className="mb-12 p-8 bg-primary rounded-xl text-primary-foreground animate-pulsing-glow-border">
         <h1 className="text-4xl font-bold mb-2">Welcome back, {user?.name?.split(' ')[0] || 'Student'}!</h1>
         <p className="text-lg opacity-90">Ready to find your next great deal or list something new?</p>
       </div>
