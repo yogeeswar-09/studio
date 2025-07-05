@@ -134,22 +134,17 @@ body {
   height: 200%;
   will-change: transform; /* Performance optimization */
   
-  /* Optimized Density Moving Sparkle Particles */
   background-image: 
     radial-gradient(circle at 15% 85%, hsl(var(--primary-foreground) / 0.4) 1px, transparent 2px),
     radial-gradient(circle at 65% 15%, hsl(var(--primary-foreground) / 0.5) 1px, transparent 2px),
     radial-gradient(circle at 45% 50%, hsl(var(--accent) / 0.6) 1.5px, transparent 2.5px),
     radial-gradient(circle at 95% 65%, hsl(var(--primary) / 0.4) 1.5px, transparent 2.5px),
-    radial-gradient(circle at 5% 5%, hsl(var(--primary-foreground) / 0.3) 1px, transparent 2.5px),
     radial-gradient(circle at 30% 70%, hsl(var(--primary) / 0.4) 1.5px, transparent 3px),
-    radial-gradient(circle at 80% 40%, hsl(var(--accent) / 0.5) 1px, transparent 2px),
-    radial-gradient(circle at 50% 95%, hsl(var(--primary-foreground) / 0.4) 1px, transparent 2.5px),
-    radial-gradient(circle at 20% 45%, hsl(var(--accent) / 0.6) 2px, transparent 3.5px),
-    radial-gradient(circle at 90% 20%, hsl(var(--primary) / 0.3) 1.5px, transparent 3px);
+    radial-gradient(circle at 80% 40%, hsl(var(--accent) / 0.5) 1px, transparent 2px);
 
-  background-size: 250px 250px; /* Slightly increase size to compensate for fewer particles */
+  background-size: 400px 400px;
   
-  animation: move-particles 80s linear infinite;
+  animation: move-particles 150s linear infinite;
   z-index: 0; /* Sits just above main background, but below content */
 }
 
@@ -168,12 +163,8 @@ body {
     radial-gradient(circle at 65% 15%, hsl(var(--primary-foreground) / 0.7) 1px, transparent 2px),
     radial-gradient(circle at 45% 50%, hsl(var(--accent) / 0.8) 1.5px, transparent 2.5px),
     radial-gradient(circle at 95% 65%, hsl(var(--primary) / 0.6) 1.5px, transparent 2.5px),
-    radial-gradient(circle at 5% 5%, hsl(var(--primary-foreground) / 0.5) 1px, transparent 2.5px),
     radial-gradient(circle at 30% 70%, hsl(var(--primary) / 0.5) 1.5px, transparent 3px),
-    radial-gradient(circle at 80% 40%, hsl(var(--accent) / 0.6) 1px, transparent 2px),
-    radial-gradient(circle at 50% 95%, hsl(var(--primary-foreground) / 0.6) 1px, transparent 2.5px),
-    radial-gradient(circle at 20% 45%, hsl(var(--accent) / 0.7) 2px, transparent 3.5px),
-    radial-gradient(circle at 90% 20%, hsl(var(--primary) / 0.4) 1.5px, transparent 3px);
+    radial-gradient(circle at 80% 40%, hsl(var(--accent) / 0.6) 1px, transparent 2px);
 }
 
 @keyframes paint-flow {
