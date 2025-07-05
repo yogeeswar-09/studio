@@ -63,7 +63,7 @@ export default function DashboardPage() {
       try {
         const listingsRef = collection(db, "listings");
         // Fetch recent, available items. Could add more criteria like "isFeatured" field if needed.
-        const q = query(listingsRef, where("status", "==", "available"), orderBy("createdAt", "desc"), limit(4));
+        const q = query(listingsRef, where("status", "==", "available"), orderBy("createdAt", "desc"), limit(8));
         const querySnapshot = await getDocs(q);
         const items = querySnapshot.docs.map(doc => ({ 
             id: doc.id, 
@@ -105,7 +105,7 @@ export default function DashboardPage() {
         <h2 className="text-3xl font-semibold text-foreground mb-6">Featured Items</h2>
         {isLoadingItems ? (
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(4)].map((_, i) => <ItemCardMiniSkeleton key={i} />)}
+            {[...Array(8)].map((_, i) => <ItemCardMiniSkeleton key={i} />)}
           </div>
         ) : featuredItems.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
