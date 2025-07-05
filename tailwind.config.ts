@@ -89,12 +89,12 @@ export default {
         },
         'text-focus-in': {
           '0%': {
-            filter: 'blur(12px)',
             opacity: '0',
+            transform: 'scale(.98)',
           },
           '100%': {
-            filter: 'blur(0px)',
             opacity: '1',
+            transform: 'scale(1)',
           },
         },
         'shining-glow': {
