@@ -42,7 +42,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [isLoading]);
   
-  // A brand new splash screen component design
   const SplashScreen = ({ isExiting }: { isExiting: boolean }) => (
     <div 
       className={cn(
@@ -69,13 +68,11 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   // This is the initial loading phase. It shows the full-screen splash.
   // `!isInitialLoadComplete` ensures this block runs only during the very first load.
   if (!isInitialLoadComplete) {
+    // Only render the splash screen. Do NOT render children until loading is complete.
     return (
-        <>
-            {/* Render the splash screen on top */}
-            <SplashScreen isExiting={!isLoading} />
-            {/* Render the main layout underneath, it will be hidden by the splash screen initially */}
-            {children}
-        </>
+      <div>
+        <SplashScreen isExiting={!isLoading} />
+      </div>
     );
   }
   

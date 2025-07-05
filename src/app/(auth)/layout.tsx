@@ -16,10 +16,10 @@ export default function AuthLayout({
         
         {/* Content */}
         <div className="relative z-10 w-full">
-          <div className="mb-8 animate-slide-up-fade-in" style={{ animationDelay: '0.1s' }}>
+          <div className="mb-8 animate-auth-pop-in" style={{ animationDelay: '0.1s' }}>
             <AppLogo iconSize={40} textSize="text-4xl" className="justify-center" />
           </div>
-          <div className="w-full max-w-md mx-auto animate-slide-up-fade-in" style={{ animationDelay: '0.2s' }}>
+          <div className="w-full max-w-md mx-auto animate-auth-pop-in" style={{ animationDelay: '0.2s' }}>
             {children}
           </div>
         </div>
