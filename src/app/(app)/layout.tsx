@@ -69,7 +69,11 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   // `!isInitialLoadComplete` ensures this block runs only during the very first load.
   if (!isInitialLoadComplete) {
     // Only render the splash screen. Do NOT render children until loading is complete.
-    return <SplashScreen isExiting={!isLoading} />;
+    return (
+      <div>
+        <SplashScreen isExiting={!isLoading} />
+      </div>
+    );
   }
   
   // After the first load, we use a much simpler loader for any subsequent auth checks.
